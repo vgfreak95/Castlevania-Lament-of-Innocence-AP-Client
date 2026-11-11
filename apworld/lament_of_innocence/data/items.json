@@ -1,0 +1,1018 @@
+[
+  {
+    "name": "Whip of Flames",
+    "game_id": 2,
+    "ap_id": 207330002,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Whip of Ice",
+    "game_id": 3,
+    "ap_id": 207330003,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Whip of Lightning",
+    "game_id": 4,
+    "ap_id": 207330004,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Vampire Killer",
+    "game_id": 5,
+    "ap_id": 207330005,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Earth Plate",
+    "game_id": 6,
+    "ap_id": 207330006,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Meteor Plate",
+    "game_id": 7,
+    "ap_id": 207330007,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Moonlight Plate",
+    "game_id": 8,
+    "ap_id": 207330008,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Solar Plate",
+    "game_id": 9,
+    "ap_id": 207330009,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Draupnir",
+    "game_id": 10,
+    "ap_id": 207330010,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Aroma Earring",
+    "game_id": 11,
+    "ap_id": 207330011,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Qigong Belt",
+    "game_id": 12,
+    "ap_id": 207330012,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Coin of Happiness",
+    "game_id": 13,
+    "ap_id": 207330013,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Raccoon Charm",
+    "game_id": 14,
+    "ap_id": 207330014,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Bloody Cape",
+    "game_id": 15,
+    "ap_id": 207330015,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Perseus's Ring",
+    "game_id": 16,
+    "ap_id": 207330016,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Anti-Poison Ring",
+    "game_id": 17,
+    "ap_id": 207330017,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Cleric's Ring",
+    "game_id": 18,
+    "ap_id": 207330018,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Ring of Fire",
+    "game_id": 19,
+    "ap_id": 207330019,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Arctic Ring",
+    "game_id": 20,
+    "ap_id": 207330020,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Ring of Thunder",
+    "game_id": 21,
+    "ap_id": 207330021,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Talisman",
+    "game_id": 22,
+    "ap_id": 207330022,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Heart Brooch",
+    "game_id": 23,
+    "ap_id": 207330023,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Mobius's Brooch",
+    "game_id": 24,
+    "ap_id": 207330024,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Piyo-piyo Shoes",
+    "game_id": 25,
+    "ap_id": 207330025,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Sacrificial Doll",
+    "game_id": 26,
+    "ap_id": 207330026,
+    "classification": "useful",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Magnetic Necklace",
+    "game_id": 27,
+    "ap_id": 207330027,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Assassin Necklace",
+    "game_id": 28,
+    "ap_id": 207330028,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Jewel Crush",
+    "game_id": 29,
+    "ap_id": 207330029,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Megingjord",
+    "game_id": 30,
+    "ap_id": 207330030,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Member Plate",
+    "game_id": 31,
+    "ap_id": 207330031,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Brisingamen",
+    "game_id": 32,
+    "ap_id": 207330032,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Piko-piko Hammer",
+    "game_id": 33,
+    "ap_id": 207330033,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Jade Mask",
+    "game_id": 34,
+    "ap_id": 207330034,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Potion",
+    "game_id": 42,
+    "ap_id": 207330042,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 12
+  },
+  {
+    "name": "High Potion",
+    "game_id": 43,
+    "ap_id": 207330043,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 6
+  },
+  {
+    "name": "Super Potion",
+    "game_id": 44,
+    "ap_id": 207330044,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 3
+  },
+  {
+    "name": "Heart Repair",
+    "game_id": 45,
+    "ap_id": 207330045,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 6
+  },
+  {
+    "name": "Mana Prism",
+    "game_id": 46,
+    "ap_id": 207330046,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 4
+  },
+  {
+    "name": "Serum",
+    "game_id": 47,
+    "ap_id": 207330047,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 2
+  },
+  {
+    "name": "Uncurse Potion",
+    "game_id": 48,
+    "ap_id": 207330048,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 2
+  },
+  {
+    "name": "Magical Ticket",
+    "game_id": 49,
+    "ap_id": 207330049,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 1
+  },
+  {
+    "name": "Memorial Ticket",
+    "game_id": 50,
+    "ap_id": 207330050,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Rosario (Unused)",
+    "game_id": 59,
+    "ap_id": 207330059,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Diamond",
+    "game_id": 60,
+    "ap_id": 207330060,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Ruby",
+    "game_id": 61,
+    "ap_id": 207330061,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Sapphire",
+    "game_id": 62,
+    "ap_id": 207330062,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Opal",
+    "game_id": 63,
+    "ap_id": 207330063,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Turquoise",
+    "game_id": 64,
+    "ap_id": 207330064,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Zircon",
+    "game_id": 65,
+    "ap_id": 207330065,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Curtain Time Bell",
+    "game_id": 66,
+    "ap_id": 207330066,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Small Meat",
+    "game_id": 67,
+    "ap_id": 207330067,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 1
+  },
+  {
+    "name": "Big Meat",
+    "game_id": 68,
+    "ap_id": 207330068,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 1
+  },
+  {
+    "name": "Ramen",
+    "game_id": 69,
+    "ap_id": 207330069,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 1
+  },
+  {
+    "name": "Wine",
+    "game_id": 70,
+    "ap_id": 207330070,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Hamburger",
+    "game_id": 71,
+    "ap_id": 207330071,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Shortcake",
+    "game_id": 72,
+    "ap_id": 207330072,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 1
+  },
+  {
+    "name": "Sushi",
+    "game_id": 73,
+    "ap_id": 207330073,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Curry",
+    "game_id": 74,
+    "ap_id": 207330074,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Tomato Juice",
+    "game_id": 75,
+    "ap_id": 207330075,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Neapolitan",
+    "game_id": 76,
+    "ap_id": 207330076,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 1
+  },
+  {
+    "name": "e Tablet",
+    "game_id": 85,
+    "ap_id": 207330085,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "VI Tablet",
+    "game_id": 86,
+    "ap_id": 207330086,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "IV Tablet",
+    "game_id": 87,
+    "ap_id": 207330087,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Unlock Jewel",
+    "game_id": 88,
+    "ap_id": 207330088,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "White Tiger Key",
+    "game_id": 89,
+    "ap_id": 207330089,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Blue Dragon Key",
+    "game_id": 90,
+    "ap_id": 207330090,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Red Phoenix Key",
+    "game_id": 91,
+    "ap_id": 207330091,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Black Turtle Key",
+    "game_id": 92,
+    "ap_id": 207330092,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Yellow Dragon Key",
+    "game_id": 93,
+    "ap_id": 207330093,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Dragon Crest",
+    "game_id": 94,
+    "ap_id": 207330094,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Tool Bag",
+    "game_id": 95,
+    "ap_id": 207330095,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Music Box",
+    "game_id": 96,
+    "ap_id": 207330096,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Ancient Text 1",
+    "game_id": 97,
+    "ap_id": 207330097,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Ancient Text 2",
+    "game_id": 98,
+    "ap_id": 207330098,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Map 1",
+    "game_id": 99,
+    "ap_id": 207330099,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Map 2",
+    "game_id": 100,
+    "ap_id": 207330100,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Map 3",
+    "game_id": 101,
+    "ap_id": 207330101,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Map 4",
+    "game_id": 102,
+    "ap_id": 207330102,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Map 5",
+    "game_id": 103,
+    "ap_id": 207330103,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Map 6",
+    "game_id": 104,
+    "ap_id": 207330104,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Map 7",
+    "game_id": 105,
+    "ap_id": 207330105,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Marker Stone 1",
+    "game_id": 106,
+    "ap_id": 207330106,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Marker Stone 2",
+    "game_id": 107,
+    "ap_id": 207330107,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Marker Stone 3",
+    "game_id": 108,
+    "ap_id": 207330108,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Marker Stone 4",
+    "game_id": 109,
+    "ap_id": 207330109,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Marker Stone 5",
+    "game_id": 110,
+    "ap_id": 207330110,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Marker Stone 6",
+    "game_id": 111,
+    "ap_id": 207330111,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Marker Stone 7",
+    "game_id": 112,
+    "ap_id": 207330112,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Marker Stone 8",
+    "game_id": 113,
+    "ap_id": 207330113,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Ancient Text 3",
+    "game_id": 114,
+    "ap_id": 207330114,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Ancient Text 4",
+    "game_id": 115,
+    "ap_id": 207330115,
+    "classification": "filler",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Red Orb",
+    "game_id": 127,
+    "ap_id": 207330127,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Blue Orb",
+    "game_id": 128,
+    "ap_id": 207330128,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Yellow Orb",
+    "game_id": 129,
+    "ap_id": 207330129,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Green Orb",
+    "game_id": 130,
+    "ap_id": 207330130,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Purple Orb",
+    "game_id": 131,
+    "ap_id": 207330131,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "White Orb",
+    "game_id": 132,
+    "ap_id": 207330132,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Black Orb",
+    "game_id": 133,
+    "ap_id": 207330133,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Wolf's Foot",
+    "game_id": 134,
+    "ap_id": 207330134,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Saisei Incense",
+    "game_id": 135,
+    "ap_id": 207330135,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Meditative Incense",
+    "game_id": 136,
+    "ap_id": 207330136,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Invincible Jar",
+    "game_id": 137,
+    "ap_id": 207330137,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Crystal Skull",
+    "game_id": 138,
+    "ap_id": 207330138,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Black Bishop",
+    "game_id": 139,
+    "ap_id": 207330139,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "White Bishop",
+    "game_id": 140,
+    "ap_id": 207330140,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Lucifer's Sword",
+    "game_id": 141,
+    "ap_id": 207330141,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Svarog Statue",
+    "game_id": 142,
+    "ap_id": 207330142,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Little Hammer",
+    "game_id": 143,
+    "ap_id": 207330143,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "HP Max Up",
+    "game_id": 144,
+    "ap_id": 207330144,
+    "classification": "useful",
+    "count": 9,
+    "filler_weight": 0
+  },
+  {
+    "name": "Heart Max Up",
+    "game_id": 145,
+    "ap_id": 207330145,
+    "classification": "useful",
+    "count": 7,
+    "filler_weight": 0
+  },
+  {
+    "name": "MP Max Up",
+    "game_id": 146,
+    "ap_id": 207330146,
+    "classification": "useful",
+    "count": 5,
+    "filler_weight": 0
+  },
+  {
+    "name": "Small Heart",
+    "game_id": 147,
+    "ap_id": 207330147,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Big Heart",
+    "game_id": 148,
+    "ap_id": 207330148,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 4
+  },
+  {
+    "name": "$100",
+    "game_id": 149,
+    "ap_id": 207330149,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "$25",
+    "game_id": 150,
+    "ap_id": 207330150,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "$250",
+    "game_id": 151,
+    "ap_id": 207330151,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 4
+  },
+  {
+    "name": "$400",
+    "game_id": 152,
+    "ap_id": 207330152,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 6
+  },
+  {
+    "name": "$1000",
+    "game_id": 153,
+    "ap_id": 207330153,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 3
+  },
+  {
+    "name": "$1",
+    "game_id": 162,
+    "ap_id": 207330162,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "$5",
+    "game_id": 163,
+    "ap_id": 207330163,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "$10",
+    "game_id": 164,
+    "ap_id": 207330164,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Rosario",
+    "game_id": 165,
+    "ap_id": 207330165,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Knife",
+    "game_id": 170,
+    "ap_id": 207330170,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Axe",
+    "game_id": 171,
+    "ap_id": 207330171,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Holy Water",
+    "game_id": 172,
+    "ap_id": 207330172,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Crystal",
+    "game_id": 173,
+    "ap_id": 207330173,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Cross",
+    "game_id": 174,
+    "ap_id": 207330174,
+    "classification": "filler",
+    "count": 0,
+    "filler_weight": 0
+  }
+]

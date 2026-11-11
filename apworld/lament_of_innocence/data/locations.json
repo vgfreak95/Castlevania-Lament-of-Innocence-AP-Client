@@ -1,0 +1,1091 @@
+[
+  {
+    "name": "PttDA: Marker Stone 1",
+    "ap_id": 207330000,
+    "region": "PttDA",
+    "kind": "pickup",
+    "vanilla_item": 106,
+    "iso_offset": 539335264,
+    "game_key": 20480
+  },
+  {
+    "name": "PttDA: Marker Stone 2",
+    "ap_id": 207330001,
+    "region": "PttDA",
+    "kind": "pickup",
+    "vanilla_item": 107,
+    "iso_offset": 541379296,
+    "game_key": 20544
+  },
+  {
+    "name": "PttDA: Marker Stone 3",
+    "ap_id": 207330002,
+    "region": "PttDA",
+    "kind": "pickup",
+    "vanilla_item": 108,
+    "iso_offset": 537055104,
+    "game_key": 20416
+  },
+  {
+    "name": "PttDA: Potion",
+    "ap_id": 207330003,
+    "region": "PttDA",
+    "kind": "pickup",
+    "vanilla_item": 42,
+    "iso_offset": 539335392,
+    "game_key": 20482
+  },
+  {
+    "name": "PttDA: Serum",
+    "ap_id": 207330004,
+    "region": "PttDA",
+    "kind": "pickup",
+    "vanilla_item": 47,
+    "iso_offset": 541379424,
+    "game_key": 20546
+  },
+  {
+    "name": "PttDA: Uncurse Potion",
+    "ap_id": 207330005,
+    "region": "PttDA",
+    "kind": "pickup",
+    "vanilla_item": 48,
+    "iso_offset": 545277280,
+    "game_key": 20674
+  },
+  {
+    "name": "PttDA: Magical Ticket",
+    "ap_id": 207330006,
+    "region": "PttDA",
+    "kind": "pickup",
+    "vanilla_item": 49,
+    "iso_offset": 545277408,
+    "game_key": 20675
+  },
+  {
+    "name": "PttDA: Map 1",
+    "ap_id": 207330007,
+    "region": "PttDA",
+    "kind": "pickup",
+    "vanilla_item": 99,
+    "iso_offset": 537055232,
+    "game_key": 20417
+  },
+  {
+    "name": "PttDA: Svarog Statue",
+    "ap_id": 207330008,
+    "region": "PttDA",
+    "kind": "pickup",
+    "vanilla_item": 142,
+    "iso_offset": 547248256,
+    "game_key": 20736
+  },
+  {
+    "name": "HoSR: Marker Stone 6",
+    "ap_id": 207330009,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 111,
+    "iso_offset": 87178720,
+    "game_key": 1920
+  },
+  {
+    "name": "HoSR: Potion 1",
+    "ap_id": 207330010,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 42,
+    "iso_offset": 75816976,
+    "game_key": 1474
+  },
+  {
+    "name": "HoSR: Potion 2",
+    "ap_id": 207330011,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 42,
+    "iso_offset": 77483392,
+    "game_key": 1538
+  },
+  {
+    "name": "HoSR: High Potion",
+    "ap_id": 207330012,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 43,
+    "iso_offset": 50108048,
+    "game_key": 580
+  },
+  {
+    "name": "HoSR: Serum",
+    "ap_id": 207330013,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 47,
+    "iso_offset": 46307248,
+    "game_key": 450
+  },
+  {
+    "name": "HoSR: Uncurse Potion",
+    "ap_id": 207330014,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 48,
+    "iso_offset": 46307376,
+    "game_key": 451
+  },
+  {
+    "name": "HoSR: Neapolitan",
+    "ap_id": 207330015,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 76,
+    "iso_offset": 52011136,
+    "game_key": 642
+  },
+  {
+    "name": "HoSR: Ramen (Bowling Minigame)",
+    "ap_id": 207330016,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 69,
+    "iso_offset": 134312960,
+    "game_key": null
+  },
+  {
+    "name": "HoSR: White Tiger Key",
+    "ap_id": 207330017,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 89,
+    "iso_offset": 144683488,
+    "game_key": 4224
+  },
+  {
+    "name": "HoSR: Black Bishop",
+    "ap_id": 207330018,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 139,
+    "iso_offset": 147841888,
+    "game_key": 4352
+  },
+  {
+    "name": "HoSR: Bloody Cape",
+    "ap_id": 207330019,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 15,
+    "iso_offset": 149566944,
+    "game_key": 4544
+  },
+  {
+    "name": "HoSR: MP Max Up",
+    "ap_id": 207330020,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 146,
+    "iso_offset": 143092192,
+    "game_key": 4160
+  },
+  {
+    "name": "HoSR: HP Max Up 1",
+    "ap_id": 207330021,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": 46307120,
+    "game_key": 448
+  },
+  {
+    "name": "HoSR: HP Max Up 2",
+    "ap_id": 207330022,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": 141358432,
+    "game_key": 4096
+  },
+  {
+    "name": "HoSR: $1000",
+    "ap_id": 207330023,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 153,
+    "iso_offset": 40837840,
+    "game_key": 263
+  },
+  {
+    "name": "HoSR: $400",
+    "ap_id": 207330024,
+    "region": "HoSR",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 79239696,
+    "game_key": 1602
+  },
+  {
+    "name": "ASML: Marker Stone 4",
+    "ap_id": 207330025,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 109,
+    "iso_offset": 161917312,
+    "game_key": 5056
+  },
+  {
+    "name": "ASML: White Orb",
+    "ap_id": 207330026,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 132,
+    "iso_offset": 168586080,
+    "game_key": 5312
+  },
+  {
+    "name": "ASML: Potion (Near Flame Elemental)",
+    "ap_id": 207330027,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 42,
+    "iso_offset": 186909808,
+    "game_key": 6018
+  },
+  {
+    "name": "ASML: Potion (Near Megingjord)",
+    "ap_id": 207330028,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 42,
+    "iso_offset": 206921840,
+    "game_key": 6787
+  },
+  {
+    "name": "ASML: High Potion (Hanged Men)",
+    "ap_id": 207330029,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 43,
+    "iso_offset": 185193840,
+    "game_key": 5954
+  },
+  {
+    "name": "ASML: High Potion (Near Megingjord)",
+    "ap_id": 207330030,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 43,
+    "iso_offset": 206921712,
+    "game_key": 6786
+  },
+  {
+    "name": "ASML: Super Potion",
+    "ap_id": 207330031,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 44,
+    "iso_offset": 201708048,
+    "game_key": 6594
+  },
+  {
+    "name": "ASML: Shortcake",
+    "ap_id": 207330032,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 72,
+    "iso_offset": 196948096,
+    "game_key": 6402
+  },
+  {
+    "name": "ASML: Yellow Dragon Key",
+    "ap_id": 207330033,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 93,
+    "iso_offset": 175612896,
+    "game_key": 5568
+  },
+  {
+    "name": "ASML: Ancient Text 1",
+    "ap_id": 207330034,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 97,
+    "iso_offset": 200258544,
+    "game_key": 6528
+  },
+  {
+    "name": "ASML: Ancient Text 3",
+    "ap_id": 207330035,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 114,
+    "iso_offset": 203147504,
+    "game_key": 6656
+  },
+  {
+    "name": "ASML: Ancient Text 4",
+    "ap_id": 207330036,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 115,
+    "iso_offset": 164859648,
+    "game_key": 5184
+  },
+  {
+    "name": "ASML: Map 2",
+    "ap_id": 207330037,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 100,
+    "iso_offset": 218482544,
+    "game_key": 7232
+  },
+  {
+    "name": "ASML: e Tablet",
+    "ap_id": 207330038,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 85,
+    "iso_offset": 194944096,
+    "game_key": 6336
+  },
+  {
+    "name": "ASML: Wolf's Foot",
+    "ap_id": 207330039,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 134,
+    "iso_offset": 179366240,
+    "game_key": 5696
+  },
+  {
+    "name": "ASML: Arctic Ring",
+    "ap_id": 207330040,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 20,
+    "iso_offset": 204794592,
+    "game_key": 6720
+  },
+  {
+    "name": "ASML: Megingjord",
+    "ap_id": 207330041,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 30,
+    "iso_offset": 208404704,
+    "game_key": 6848
+  },
+  {
+    "name": "ASML: Heart Max Up (Near HP Max Up)",
+    "ap_id": 207330042,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 145,
+    "iso_offset": 186909552,
+    "game_key": 6016
+  },
+  {
+    "name": "ASML: Heart Max Up (Near Flame Elemental)",
+    "ap_id": 207330043,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 145,
+    "iso_offset": 186909680,
+    "game_key": 6017
+  },
+  {
+    "name": "ASML: MP Max Up",
+    "ap_id": 207330044,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 146,
+    "iso_offset": 198802048,
+    "game_key": 6464
+  },
+  {
+    "name": "ASML: HP Max Up",
+    "ap_id": 207330045,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": 188645088,
+    "game_key": 6080
+  },
+  {
+    "name": "ASML: $1000",
+    "ap_id": 207330046,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 153,
+    "iso_offset": 180856800,
+    "game_key": 5762
+  },
+  {
+    "name": "ASML: $400 1",
+    "ap_id": 207330047,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 160466304,
+    "game_key": 4994
+  },
+  {
+    "name": "ASML: $400 2",
+    "ap_id": 207330048,
+    "region": "ASML",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 182306544,
+    "game_key": 5826
+  },
+  {
+    "name": "DPoW: Marker Stone 8",
+    "ap_id": 207330049,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 113,
+    "iso_offset": 293522272,
+    "game_key": 10304
+  },
+  {
+    "name": "DPoW: Potion",
+    "ap_id": 207330050,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 42,
+    "iso_offset": 280830720,
+    "game_key": 9794
+  },
+  {
+    "name": "DPoW: Super Potion",
+    "ap_id": 207330051,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 44,
+    "iso_offset": 323806560,
+    "game_key": 11394
+  },
+  {
+    "name": "DPoW: Heart Repair",
+    "ap_id": 207330052,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 45,
+    "iso_offset": 313878928,
+    "game_key": 11140
+  },
+  {
+    "name": "DPoW: Blue Dragon Key",
+    "ap_id": 207330053,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 90,
+    "iso_offset": 306978912,
+    "game_key": 10880
+  },
+  {
+    "name": "DPoW: Map 3",
+    "ap_id": 207330054,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 101,
+    "iso_offset": 248493328,
+    "game_key": 8704
+  },
+  {
+    "name": "DPoW: Little Hammer",
+    "ap_id": 207330055,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 143,
+    "iso_offset": 305389792,
+    "game_key": 10816
+  },
+  {
+    "name": "DPoW: Meditative Incense (Skull Chute)",
+    "ap_id": 207330056,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 136,
+    "iso_offset": 322139216,
+    "game_key": null
+  },
+  {
+    "name": "DPoW: Draupnir",
+    "ap_id": 207330057,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 10,
+    "iso_offset": 329660640,
+    "game_key": 11648
+  },
+  {
+    "name": "DPoW: Raccoon Charm",
+    "ap_id": 207330058,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 14,
+    "iso_offset": 298136288,
+    "game_key": 10496
+  },
+  {
+    "name": "DPoW: Heart Max Up 1",
+    "ap_id": 207330059,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 145,
+    "iso_offset": 298136416,
+    "game_key": 10497
+  },
+  {
+    "name": "DPoW: Heart Max Up 2",
+    "ap_id": 207330060,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 145,
+    "iso_offset": 303660256,
+    "game_key": 10752
+  },
+  {
+    "name": "DPoW: MP Max Up (Skull Chute)",
+    "ap_id": 207330061,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 146,
+    "iso_offset": 318598864,
+    "game_key": null
+  },
+  {
+    "name": "DPoW: HP Max Up (B1F)",
+    "ap_id": 207330062,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": 261818496,
+    "game_key": 9216
+  },
+  {
+    "name": "DPoW: HP Max Up (B2F)",
+    "ap_id": 207330063,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": 302007392,
+    "game_key": 10688
+  },
+  {
+    "name": "DPoW: $1000",
+    "ap_id": 207330064,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 153,
+    "iso_offset": 323806688,
+    "game_key": 11395
+  },
+  {
+    "name": "DPoW: $400 1",
+    "ap_id": 207330065,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 313878672,
+    "game_key": 11138
+  },
+  {
+    "name": "DPoW: $400 2",
+    "ap_id": 207330066,
+    "region": "DPoW",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 313878800,
+    "game_key": 11139
+  },
+  {
+    "name": "GFbT: Marker Stone 5",
+    "ap_id": 207330067,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 110,
+    "iso_offset": 390452448,
+    "game_key": 14016
+  },
+  {
+    "name": "GFbT: Potion",
+    "ap_id": 207330068,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 42,
+    "iso_offset": 346755968,
+    "game_key": 12418
+  },
+  {
+    "name": "GFbT: Red Phoenix Key",
+    "ap_id": 207330069,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 91,
+    "iso_offset": 416475744,
+    "game_key": 14912
+  },
+  {
+    "name": "GFbT: Map 4",
+    "ap_id": 207330070,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 102,
+    "iso_offset": 362402944,
+    "game_key": 12992
+  },
+  {
+    "name": "GFbT: Tool Bag",
+    "ap_id": 207330071,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 95,
+    "iso_offset": 340163168,
+    "game_key": 12160
+  },
+  {
+    "name": "GFbT: Saisei Incense",
+    "ap_id": 207330072,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 135,
+    "iso_offset": 428739424,
+    "game_key": 15360
+  },
+  {
+    "name": "GFbT: Ring of Fire",
+    "ap_id": 207330073,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 19,
+    "iso_offset": 345106912,
+    "game_key": 12352
+  },
+  {
+    "name": "GFbT: Ring of Thunder",
+    "ap_id": 207330074,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 21,
+    "iso_offset": 413261664,
+    "game_key": 14784
+  },
+  {
+    "name": "GFbT: Jewel Crush",
+    "ap_id": 207330075,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 29,
+    "iso_offset": 388751840,
+    "game_key": 13952
+  },
+  {
+    "name": "GFbT: Heart Max Up",
+    "ap_id": 207330076,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 145,
+    "iso_offset": 420029440,
+    "game_key": 15040
+  },
+  {
+    "name": "GFbT: HP Max Up",
+    "ap_id": 207330077,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": 359027936,
+    "game_key": 12864
+  },
+  {
+    "name": "GFbT: $400 1",
+    "ap_id": 207330078,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 359028064,
+    "game_key": 12866
+  },
+  {
+    "name": "GFbT: $400 2",
+    "ap_id": 207330079,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 372519568,
+    "game_key": 13378
+  },
+  {
+    "name": "GFbT: $400 3",
+    "ap_id": 207330080,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 374584320,
+    "game_key": 13442
+  },
+  {
+    "name": "GFbT: $400 4",
+    "ap_id": 207330081,
+    "region": "GFbT",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 387056128,
+    "game_key": 13890
+  },
+  {
+    "name": "Theatre: Marker Stone 7",
+    "ap_id": 207330082,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 112,
+    "iso_offset": 602762256,
+    "game_key": 22144
+  },
+  {
+    "name": "Theatre: Potion 1",
+    "ap_id": 207330083,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 42,
+    "iso_offset": 600720512,
+    "game_key": 22082
+  },
+  {
+    "name": "Theatre: Potion 2",
+    "ap_id": 207330084,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 42,
+    "iso_offset": 608886784,
+    "game_key": 22338
+  },
+  {
+    "name": "Theatre: High Potion",
+    "ap_id": 207330085,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 43,
+    "iso_offset": 569273616,
+    "game_key": 20994
+  },
+  {
+    "name": "Theatre: Heart Repair",
+    "ap_id": 207330086,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 45,
+    "iso_offset": 567295120,
+    "game_key": 20930
+  },
+  {
+    "name": "Theatre: Mana Prism",
+    "ap_id": 207330087,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 46,
+    "iso_offset": 621774192,
+    "game_key": 22786
+  },
+  {
+    "name": "Theatre: Curtain Time Bell",
+    "ap_id": 207330088,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 66,
+    "iso_offset": 591027424,
+    "game_key": 21760
+  },
+  {
+    "name": "Theatre: Black Turtle Key",
+    "ap_id": 207330089,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 92,
+    "iso_offset": 619867232,
+    "game_key": 22720
+  },
+  {
+    "name": "Theatre: Ancient Text 2",
+    "ap_id": 207330090,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 98,
+    "iso_offset": 575008480,
+    "game_key": 21184
+  },
+  {
+    "name": "Theatre: Map 5",
+    "ap_id": 207330091,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 103,
+    "iso_offset": 596558960,
+    "game_key": 21952
+  },
+  {
+    "name": "Theatre: Lucifer's Sword",
+    "ap_id": 207330092,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 141,
+    "iso_offset": 589296736,
+    "game_key": 21696
+  },
+  {
+    "name": "Theatre: Aroma Earring",
+    "ap_id": 207330093,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 11,
+    "iso_offset": 582381184,
+    "game_key": 21440
+  },
+  {
+    "name": "Theatre: Heart Brooch",
+    "ap_id": 207330094,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 23,
+    "iso_offset": 585839072,
+    "game_key": 21568
+  },
+  {
+    "name": "Theatre: Brisingamen",
+    "ap_id": 207330095,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 32,
+    "iso_offset": 592680800,
+    "game_key": 21824
+  },
+  {
+    "name": "Theatre: Heart Max Up",
+    "ap_id": 207330096,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 145,
+    "iso_offset": 584109920,
+    "game_key": 21504
+  },
+  {
+    "name": "Theatre: MP Max Up",
+    "ap_id": 207330097,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 146,
+    "iso_offset": 577006096,
+    "game_key": 21248
+  },
+  {
+    "name": "Theatre: HP Max Up 1",
+    "ap_id": 207330098,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": 587573216,
+    "game_key": 21632
+  },
+  {
+    "name": "Theatre: HP Max Up 2",
+    "ap_id": 207330099,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": 594943744,
+    "game_key": 21888
+  },
+  {
+    "name": "Theatre: $400 1",
+    "ap_id": 207330100,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 602762384,
+    "game_key": 22146
+  },
+  {
+    "name": "Theatre: $400 2",
+    "ap_id": 207330101,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 604806528,
+    "game_key": 22210
+  },
+  {
+    "name": "Theatre: $400 3",
+    "ap_id": 207330102,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 606828672,
+    "game_key": 22274
+  },
+  {
+    "name": "Theatre: $400 4",
+    "ap_id": 207330103,
+    "region": "Theatre",
+    "kind": "pickup",
+    "vanilla_item": 152,
+    "iso_offset": 614616704,
+    "game_key": 22530
+  },
+  {
+    "name": "PotMM: Super Potion",
+    "ap_id": 207330104,
+    "region": "PotMM",
+    "kind": "pickup",
+    "vanilla_item": 44,
+    "iso_offset": 501664608,
+    "game_key": 19010
+  },
+  {
+    "name": "PotMM: VI Tablet",
+    "ap_id": 207330105,
+    "region": "PotMM",
+    "kind": "pickup",
+    "vanilla_item": 86,
+    "iso_offset": 517737440,
+    "game_key": 19648
+  },
+  {
+    "name": "PotMM: Dragon Crest",
+    "ap_id": 207330106,
+    "region": "PotMM",
+    "kind": "pickup",
+    "vanilla_item": 94,
+    "iso_offset": 519324000,
+    "game_key": 19712
+  },
+  {
+    "name": "PotMM: Unlock Jewel",
+    "ap_id": 207330107,
+    "region": "PotMM",
+    "kind": "pickup",
+    "vanilla_item": 88,
+    "iso_offset": 514747232,
+    "game_key": 19520
+  },
+  {
+    "name": "PotMM: Heart Max Up",
+    "ap_id": 207330108,
+    "region": "PotMM",
+    "kind": "pickup",
+    "vanilla_item": 145,
+    "iso_offset": 505272928,
+    "game_key": 19136
+  },
+  {
+    "name": "PotMM: MP Max Up",
+    "ap_id": 207330109,
+    "region": "PotMM",
+    "kind": "pickup",
+    "vanilla_item": 146,
+    "iso_offset": 506925408,
+    "game_key": 19200
+  },
+  {
+    "name": "PotMM: HP Max Up",
+    "ap_id": 207330110,
+    "region": "PotMM",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": 516398176,
+    "game_key": 19585
+  },
+  {
+    "name": "PoET: High Potion",
+    "ap_id": 207330111,
+    "region": "PoET",
+    "kind": "pickup",
+    "vanilla_item": 43,
+    "iso_offset": 527920224,
+    "game_key": 19970
+  },
+  {
+    "name": "ASML: Golem",
+    "ap_id": 207331500,
+    "region": "ASML",
+    "kind": "boss",
+    "vanilla_item": 127,
+    "iso_offset": 4519312,
+    "game_key": 32768
+  },
+  {
+    "name": "HoSR: Undead Parasite",
+    "ap_id": 207331501,
+    "region": "HoSR",
+    "kind": "boss",
+    "vanilla_item": 128,
+    "iso_offset": 4519316,
+    "game_key": 32769
+  },
+  {
+    "name": "Theatre: Succubus",
+    "ap_id": 207331502,
+    "region": "Theatre",
+    "kind": "boss",
+    "vanilla_item": 129,
+    "iso_offset": 4519320,
+    "game_key": 32770
+  },
+  {
+    "name": "DPoW: Joachim",
+    "ap_id": 207331503,
+    "region": "DPoW",
+    "kind": "boss",
+    "vanilla_item": 130,
+    "iso_offset": 4519324,
+    "game_key": 32771
+  },
+  {
+    "name": "GFbT: Medusa",
+    "ap_id": 207331504,
+    "region": "GFbT",
+    "kind": "boss",
+    "vanilla_item": 131,
+    "iso_offset": 4519328,
+    "game_key": 32772
+  },
+  {
+    "name": "PoET: Forgotten One",
+    "ap_id": 207331505,
+    "region": "PoET",
+    "kind": "boss",
+    "vanilla_item": 133,
+    "iso_offset": 4519336,
+    "game_key": 32774
+  },
+  {
+    "name": "ASML: Flame Elemental",
+    "ap_id": 207331506,
+    "region": "ASML",
+    "kind": "boss",
+    "vanilla_item": 2,
+    "iso_offset": 4519344,
+    "game_key": 32776
+  },
+  {
+    "name": "DPoW: Frost Elemental",
+    "ap_id": 207331507,
+    "region": "DPoW",
+    "kind": "boss",
+    "vanilla_item": 3,
+    "iso_offset": 4519348,
+    "game_key": 32777
+  },
+  {
+    "name": "GFbT: Thunder Elemental",
+    "ap_id": 207331508,
+    "region": "GFbT",
+    "kind": "boss",
+    "vanilla_item": 4,
+    "iso_offset": 4519352,
+    "game_key": 32778
+  }
+]

@@ -1,0 +1,43 @@
+# Build settings for the Castlevania: Lament of Innocence (SLUS-20733) Archipelago patch.
+# Read by tools/build.py (build.ps1 on Windows) and tools/bin2pnach.py.
+
+[game]
+crc = "28270F7D"                # PCSX2 loads patches/<crc>.pnach
+
+[build]
+author = "VGFreak"              # author= line of every pnach group
+docker_image = "ps2dev/ps2dev"  # compile inside this image; "" = use mips64r5900el-ps2-elf-* on PATH
+
+[install]
+patches_dir = ""                # where --install copies to; "" = PCSX2's default patches folder
+pnach = "ap"                    # the [pnach.*] that --install copies when none is named
+
+# ---- patches ----
+# One [patch.<name>] per binary, compiled to build/<name>.{elf,bin,map,lst} and written to the pnach
+# as its own group, which can be switched on and off in PCSX2.
+#   base     load address in the unused EE RAM cave 0x96000-0xFFFFF
+#   sources  C files (wildcards allowed); cflags = extra compiler flags
+#   hooks    jal instructions redirected to the patch: the call site, the original instruction
+#            (checked against SLUS_207.33, only written to the pnach as a comment) and the function
+
+# mailbox at 0xFC000 (src/pickup.c), message queue at 0xFD000 (src/msgbox.h)
+[patch.pickup]
+title = "Archipelago Pickups"
+description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000. Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
+base = 0x000F9000
+sources = ["src/pickup.c", "src/msgbox.c"]
+hooks = [
+    { site = 0x00447A08, original = 0x0C111C1E, function = "pickup_hook" },        # jal Item_OnPickup in ItemObj_CheckTouch
+    { site = 0x0056AE8C, original = 0x0C112BAC, function = "placed_spawn_stub" },  # jal ItemObj_Spawn in PlacedItem_Spawn
+    { site = 0x00439F08, original = 0x0C114ACA, function = "frame_end_hook" },     # jal FrameEnd (runs while frozen)
+    { site = 0x0056AE04, original = 0x0C1ACEE0, function = "room_flag_hook" },     # jal GetRoomItemFlag in PlacedItem_Spawn (location scan)
+    { site = 0x005761F4, original = 0x0C112BAC, function = "boss_spawn_stub" },    # jal ItemObj_Spawn in BossReward_Update
+    { site = 0x0043A958, original = 0x0C10FC9C, function = "ending_hook" },        # jal Ending_Update in GameStateManager (state 0xD)
+]
+
+# ---- pnach files ----
+# Each [pnach.<name>] is written to <dir>/<crc>.pnach: the "Debug printf" group, then its patches.
+
+[pnach.ap]
+dir = "build"
+patches = ["pickup"]
