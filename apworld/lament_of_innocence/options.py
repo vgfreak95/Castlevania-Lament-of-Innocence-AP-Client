@@ -25,9 +25,15 @@ class EnemyDropSanity(Toggle):
     visibility = Visibility.none
 
 
+class LoIDeathLink(DeathLink):
+    """NOT IMPLEMENTED YET: the client doesn't send or receive deaths. Ignored for now."""
+    display_name = "Death Link (not implemented)"
+    visibility = Visibility.none
+
+
 @dataclass
 class LoIOptions(PerGameCommonOptions):
     goal: Goal
-    death_link: DeathLink
+    death_link: LoIDeathLink
     torch_sanity: TorchSanity
     enemy_drop_sanity: EnemyDropSanity

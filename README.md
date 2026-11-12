@@ -1,91 +1,94 @@
-# Castlevania: Lament of Innocence — Archipelago Client
+# Castlevania: Lament of Innocence — Archipelago
 
-[Archipelago](https://archipelago.gg) multiworld support for Castlevania: Lament of Innocence
-(PS2, US release SLUS-20733) on PCSX2. It works on an unmodified ISO and has two parts:
+Play Castlevania: Lament of Innocence (PS2) in an [Archipelago](https://archipelago.gg)
+multiworld randomizer. Floor pickups and boss rewards are shuffled into a shared item pool with
+other players' games, and the items you find may belong to someone else's world.
 
-- **The apworld** (`apworld/lament_of_innocence/`): the Archipelago world (items, locations,
-  logic, options) plus the game client, which talks to PCSX2 over PINE.
-- **The pnach patch** (`src/`): the "Archipelago Pickups" EE patch. It turns floor pickups and
-  boss rewards into location checks, receives items from the client and shows message boxes.
+You don't need to patch the ISO. A PCSX2 patch changes the game while it runs, and the
+Archipelago client talks to PCSX2 directly.
 
-See `apworld/lament_of_innocence/docs/` for what gets randomized and for the player setup guide.
+## What you need
 
-## Repository layout
+- [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.4 or newer
+- [PCSX2](https://pcsx2.net/) 2.x
+- Your own copy of Castlevania: Lament of Innocence, **US version (SLUS-20733)**, as an ISO
+- From this repository's [Releases](../../releases) page:
+  - `lament_of_innocence.apworld`
+  - `28270F7D.pnach`
 
-```
-apworld/lament_of_innocence/   the world and the client (client.py, pine.py, game_interface.py)
-  data/                        items.json, locations.json, extra_locations.json
-  docs/                        game info page and setup guide
-  test/                        world logic tests (run inside an Archipelago checkout)
-src/                           the pickup patch (pickup.c, msgbox.c) and game addresses (game.h)
-game.ld                        linker script: game function and data addresses
-config.toml                    patch build settings: load address, hooks, pnach output
-build.ps1 / build.sh           build the patch (Windows wrapper / compile script)
-tools/                         build, packaging, test and debugging scripts
-```
+## Setup
 
-## Requirements
+### 1. Install the apworld
 
-- Python 3.13 (on Windows, use the `py` launcher: `py -3.13`)
-- [Docker](https://www.docker.com/) for the `ps2dev/ps2dev` toolchain image. Or set
-  `docker_image = ""` in `config.toml` and put the `mips64r5900el-ps2-elf-*` tools on your PATH.
-- [Archipelago](https://github.com/ArchipelagoMW/Archipelago) 0.6.4 or newer
-- PCSX2 with PINE enabled (Settings > Advanced > PINE, slot 28011)
+Double-click `lament_of_innocence.apworld`, or copy it into Archipelago's `custom_worlds` folder
+(by default `C:\ProgramData\Archipelago\custom_worlds`). Then restart the Archipelago Launcher.
 
-## Building
+### 2. Install the PCSX2 patch
 
-### 1. The pnach patch
+1. Copy `28270F7D.pnach` into PCSX2's `patches` folder. On Windows this is usually
+   `Documents\PCSX2\patches`. To find it, use **Tools > Open Data Directory** in PCSX2.
+2. In PCSX2, right-click the game in your library, open **Properties > Patches** and turn on
+   **Archipelago Pickups**.
 
-With Docker running:
+### 3. Turn on PINE in PCSX2
 
-```powershell
-.\build.ps1             # compile -> build\28270F7D.pnach
-.\build.ps1 -Install    # also copy it into PCSX2's patches folder
-```
+The client connects to PCSX2 through PINE. Go to **Settings > Advanced**, enable **PINE** and leave
+the slot at **28011**.
 
-On Linux or macOS, run `python3 tools/build.py [--install]`.
+### 4. Create your player YAML
 
-The build regenerates `src/ap_locations.h` from the location data, compiles `src/pickup.c` and
-`src/msgbox.c` at `0xF9000` and writes the pnach. To install it somewhere other than PCSX2's
-default patches folder, set `patches_dir` in `config.toml`. In PCSX2, enable both the
-"Archipelago Pickups" and "Debug printf" patches for the game.
+In the Archipelago Launcher, use **Generate Template Options** or **Options Creator** (0.6.7 or above)
 
-### 2. The apworld
+## Options
 
-```powershell
-py -3.13 tools\build_apworld.py                 # -> build\lament_of_innocence.apworld
-py -3.13 tools\build_apworld.py --install       # also copy it to C:\ProgramData\Archipelago\custom_worlds
-py -3.13 tools\build_apworld.py --dev C:\path\to\Archipelago   # also mirror it into a source checkout
-```
 
-The `.apworld` doesn't include the world's `test/` folder.
-
-## Testing
-
-Client protocol tests run against a fake PCSX2 in memory, so they need neither an emulator nor
-Archipelago:
-
-```powershell
-py -3.13 tools\test_ap_client.py -v
-```
-
-The world logic tests in `apworld/lament_of_innocence/test/` need an Archipelago source checkout.
-Mirror the world into it with `build_apworld.py --dev <checkout>`, then run pytest there on
-`worlds/lament_of_innocence`.
-
-## Debugging tools
-
-Each of these connects to a running PCSX2 over PINE:
-
-- `py -3.13 tools\pickup_client.py`: prints pickup and location-check events from the patch.
-- `py -3.13 tools\send_item.py <item id hex> [sender]`: sends one item to the game as a fake
-  server would, e.g. `send_item.py 2A Player2`.
-
-`tools\loc_scan.py` fills the `game_key` values in `locations.json` from an in-game location scan.
-That scan is part of the separate debug-menu patch, which this repository doesn't include.
+| Option       | Values                                 | Description                                        |
+|--------------|----------------------------------------|----------------------------------------------------|
+| `goal`       | `defeat_walter` (default), `defeat_death` | Beat Walter Bernhard, or Death (fought after Walter). |
 
 ## Playing
 
-1. Boot the vanilla ISO in PCSX2 with the patch enabled.
-2. Open the Lament of Innocence Client from the Archipelago Launcher.
-3. Connect with `/connect address:port` and start a new game.
+1. Start PCSX2 and boot the game. The Archipelago Pickups patch must be on.
+2. In the Archipelago Launcher, open **Lament of Innocence Client**.
+3. Connect to the server: `/connect address:port`.
+4. Start a **new game**.
+
+When you pick up a location's item or beat a boss, the check is sent. A message box shows what
+you found and who it belongs to. Items other players send you arrive in game with a message box.
+
+Extra commands in the client:
+
+| Command       | What it does                                                        |
+|---------------|---------------------------------------------------------------------|
+| `/pcsx2`      | Shows whether the client is connected to PCSX2 and the game.        |
+| `/popups`     | Turns the in-game "sent item" popups on or off.                     |
+| `/slot 28011` | Changes the PINE slot, if you set PCSX2 to use a different one.     |
+
+## What's randomized
+
+- **Locations:** 112 unique floor pickups, from the Prelude to the Prison of Eternal Torture,
+  plus the rewards of 9 bosses: the five area bosses, the three Elementals and the Forgotten One.
+- **Items:** whips (except the starting Whip of Alchemy), the five keys, tablets, Dragon Crest,
+  Unlock Jewel, Curtain Time Bell, all seven orbs, armour, accessories and relics (including
+  shop items), HP/Heart/MP Max Ups and filler (potions, hearts, money, food).
+
+Every vanilla gate is still in place: the key doors, the e Tablet door, the Curtain Time Bell, the
+Unlock Jewel door, the Pagoda seal and the way up to Walter. To reach Walter you need the five
+coloured orbs (Red, Blue, Yellow, Green, Purple), the five area bosses defeated, the Dragon Crest
+and the Vampire Killer.
+
+## Troubleshooting
+
+- **The client can't connect to PCSX2.** Check that PINE is enabled with slot 28011 and that the
+  game is running. Type `/pcsx2` in the client to see the connection state.
+- **Pickups give their normal items and no checks are sent.** The patch isn't active. Make sure
+  `28270F7D.pnach` is in the `patches` folder and **Archipelago Pickups** is turned on in the
+  game's Patches settings.
+- **The game isn't recognised.** Only the US version (SLUS-20733) is supported.
+
+## Building from source
+
+This is only needed if you're working on the project. Build the PCSX2 patch with
+`.\build.ps1`, which needs Docker and the `ps2dev/ps2dev` image (settings are in `config.toml`).
+Package the apworld with `py -3.13 tools\build_apworld.py`, and run the client tests with
+`py -3.13 tools\test_ap_client.py`. Both outputs go to `build\`.
