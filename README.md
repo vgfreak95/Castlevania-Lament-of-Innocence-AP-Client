@@ -92,3 +92,12 @@ This is only needed if you're working on the project. Build the PCSX2 patch with
 `.\build.ps1`, which needs Docker and the `ps2dev/ps2dev` image (settings are in `config.toml`).
 Package the apworld with `py -3.13 tools\build_apworld.py`, and run the client tests with
 `py -3.13 tools\test_ap_client.py`. Both outputs go to `build\`.
+
+## AI Disclaimer: AI was used in helping with the creation of this Archipelago
+
+AI Tools Used: Claude Code with Model: Opus 5.5
+The purpose of the tools was to help reverse engineer the game and perform essentially a basic decompilation, for the aspects needed to create the archipelago.
+The tools were used extensively. I generally helped guide Claude to the answers and helped with testing and ensuring its accuracy
+I have reviewed most of the code and understand the debug menu, archipelago item pickups, and I designed the menu architecture.
+
+For logic, the already existing randomizer of the game by Casj was used with his permission from the start.
