@@ -337,6 +337,17 @@ class StatusAndMessageTests(unittest.TestCase):
         self.assertEqual(st.goal, gi.GOAL_WALTER)
         self.assertEqual((st.stage, st.room), (5, 0x29))
 
+    def test_deathlink_counters(self):
+        game, _, iface, _ = make_session()
+        st = iface.status()
+        self.assertEqual((st.deaths, st.kill_req), (0, 0))
+        game.u32(gi.STATUS + 24, 2)                    # the game counted two deaths
+        self.assertEqual(iface.status().deaths, 2)
+        iface.request_kill()
+        iface.request_kill()
+        self.assertEqual(game.u32(gi.STATUS_KILL_REQ), 2)
+        self.assertEqual(iface.status().kill_req, 2)
+
     def test_heartbeat_changes(self):
         game, _, iface, _ = make_session()
         iface.heartbeat()

@@ -123,6 +123,11 @@ int Item_OnPickup(u8 *obj);            /* 0x447078 */
  * ItemObj_CheckTouch calls it as (0, 1) right before a pickup (jal @ 0x4479C0) and leaves the
  * item on the floor when it returns nonzero; that call is the only way into a pickup. */
 int Player_TestFlag(int player, int mask);
+/* 0x461398: sets (on = 1) or clears flag bits `mask` of player `player` (struct +0xC30, via
+ * 0x46D988). The damage handler (0x467178) ends with: HP < 1 (after the revive relic, equip item
+ * 0x1A, had its chance) -> Player_SetFlag(player, PLAYER_FLAG_DEAD, 1), which starts the death. */
+void Player_SetFlag(int player, int mask, int on);
+#define PLAYER_FLAG_DEAD 0x1
 #define OBJFLAG_PERSISTENT 0x400   /* set by PlacedItem_Spawn on items with a collected flag */
 #define ITEM_ID_NO_EFFECT  0xA6    /* Bloody Skull: Item_OnPickup has no case for it, gives nothing */
 
@@ -213,6 +218,11 @@ typedef struct {
 #define ROOMDATA (*(u8 *volatile *)0x00B5F4E0)
 #define ROOMDATA_OBJLISTS 0x04
 #define OBJLIST_COUNT     0x00
+/* Door records (object list 0; BoxObj_Update 0x454518 reads them): float x, y, z at +0x00, yaw at
+ * +0x14, size (thickness, height, width) at +0x20, destination at +0x50: s16 stage, room,
+ * object list, entrance (-1 = none). */
+#define DOOR_DEST_STAGE   0x50
+#define DOOR_DEST_ROOM    0x52
 
 /* 0x4539F0: start a transition to (stage, room), arriving at `entrance` of object list `objlist`.
  * Does nothing unless stage < stage_count and room < room_count[stage]; the entrance is not checked.
@@ -268,5 +278,68 @@ void DrawText(const char *text, const TextStyle *style, int x, int y, int layer,
 
 #define RGBA(r, g, b, a)                                                       \
   ((u32)(r) | ((u32)(g) << 8) | ((u32)(b) << 16) | ((u32)(a) << 24))
+
+/* 0x460828: a player update step, void(void); GameplayFrame case 0 calls it (jal @ 0x439EC8)
+ * before HUD_UpdateVisibility, only on frames where the world isn't frozen */
+void Player_UpdateStep(void);
+/* 0x442730: updates every object; GameplayFrame case 0 calls it at 0x439EE8 and 0x439F00, the
+ * second after the frozen-frame skip, so it runs on frozen frames too */
+void Obj_UpdateAll(void);
+
+/* ---- 2D primitives: per-frame GS packet objects ----
+ * Usage copied from the screen fade (0x43F390): Prim_Alloc, GS register list (GsRegs_Init/Set),
+ * Prim_Init, Prim_SetRegs, Prim_SetFlags, Prim_SetVertexCount, Prim_SetColour, fill the vertices
+ * at obj + 0x50, then submit. The GIF tag is at obj + 0x30 (PRIM in bits 47-57), RGBAQ at +0x40
+ * (four ints, 0x80 = full). Type 4: vertex count 2 = sprite (UV, XYZ2 per vertex, 0x20 bytes),
+ * count 0 = 4-vertex triangle strip (same layout). XY are GS 12.4 fixed point, screen centre at
+ * 2048: (screen + 2048) * 16. */
+u8 *Prim_Alloc(int size);                         /* 0x457590: per-frame scratch, 0 when full */
+void Prim_Init(u8 *obj, int type);                /* 0x457DB8 */
+void Prim_SetFlags(u8 *obj, int a, int fge, int abe, int fix); /* 0x457AB8: game passes (1,0,abe,0) */
+void Prim_SetVertexCount(u8 *obj, int count);     /* 0x457CD0: type 4 only */
+void Prim_SetColour(u8 *obj, const int *rgba);    /* 0x457A00 */
+void Prim_SetRegs(u8 *obj, u8 *regs);             /* 0x457F78 */
+void GsRegs_Init(u8 *regs);                       /* 0x4575E0: A+D list, 5 slots, 0x60 bytes */
+/* 0x457630: the game takes a 64-bit value in a2 (stored with sd); declared u32 so it is passed in
+ * one register, which is enough for values below 0x80000000 */
+void GsRegs_Set(u8 *regs, int reg, u32 value);
+void Prim_SubmitLayer(u8 *obj, int layer);        /* 0x459E20: layer < 0x65, DrawText's layer */
+#define PRIM_TAG        0x30
+#define PRIM_VERTS      0x50
+#define PRIM_TME_BYTE   0x36       /* GIF tag byte holding PRIM bit 4 (texture on) */
+#define PRIM_TME_BIT    0x08
+#define GS_REG_TEST_1   0x47
+#define GS_REG_ALPHA_1  0x42
+
+/* ---- area map (the pause map's data, loaded at stage load and kept) ----
+ * File pointer @ 0xB90974 (disc file id @ 0xB90970): +0 relocated flag (1), +4 piece count,
+ * +0x30 piece pointers. Piece (0x60 bytes): +0 stage, +1 room, +2 floor, +8 u16 flags,
+ * +0xB size in squares, +0x10 u16 part counts per kind, +0x1A u8[4] fill parts, +0x1E u8[4]
+ * outline parts, +0x40 float x, y, z, yaw, +0x50 float scale x, y, z.
+ * The pause map model follows the pieces (16-byte aligned, magic 0xFFFFxxxx): +0x20 mesh count,
+ * +0x24 offset of the first mesh. Meshes are back to back, u32 byte size first, byte +0x43 =
+ * part index; their VIF UNPACK V3-32 blocks (cmd byte 0x68, count = byte 2) hold int32 vertices
+ * in area map space: map x = vx / 16, map z = -vz / 16. Leon -> map (pause map marker 0x6C3EB8):
+ * piece.pos + piece.scale * RotY(piece.yaw) * 0.1 * (x, 0, z). */
+#define MAP_FILE (*(u8 *volatile *)0x00B90974)
+u8 *Map_GetCurrentPiece(void);    /* 0x6C1048: current room's piece for Leon's floor, or 0 */
+#define PIECE_ROOM     0x01
+#define PIECE_FLOOR    0x02
+#define PIECE_FLAGS    0x08        /* u16 */
+#define PIECE_FLAG_SAVE 0x0002     /* the pause map draws the outline red (0x6C20B8, colours @ 0x7984A0) */
+#define PIECE_SQUARES  0x0B
+#define PIECE_COUNTS   0x10
+#define PIECE_FILL     0x1A
+#define PIECE_OUTLINE  0x1E
+#define PIECE_POS      0x40        /* float x, y, z, yaw */
+#define PIECE_SCALE    0x50
+#define MODEL_MESH_COUNT 0x20
+#define MODEL_MESH_OFS   0x24
+#define MESH_PART        0x43
+#define VIF_UNPACK_V3_32 0x68
+
+/* room state table: 12 bytes per room key, bit 0 of the first word = visited */
+#define ROOM_STATE (*(u32 *volatile *)0x00797D40)
+#define ROOM_STATE_COUNT (*(volatile int *)0x00797D44)
 
 #endif

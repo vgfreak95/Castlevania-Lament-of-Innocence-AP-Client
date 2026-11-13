@@ -17,12 +17,15 @@ typedef struct {
     u32 scan;           /* AP_SCAN_ACTIVE while the debug menu's location scan runs */
     u32 client_ticks;   /* bumped by the PC client on every poll; lets the game know one is there */
     u32 hud_off;        /* nonzero: hide the "pickups left" counter (debug menu, Info HUD page) */
-    u32 reserved[2];
+    u32 deaths;         /* DeathLink, written by the game: Leon's deaths since boot, not counting
+                           ones it caused for a received DeathLink */
+    u32 kill_req;       /* DeathLink, written by the client: bumped for every received death; the
+                           game kills Leon once per change */
 } ApStatus;
 
 #define AP_STATUS ((volatile ApStatus *)0x000FCF00)
 #define AP_STATUS_MAGIC     0x54535041   /* "APST" */
-#define AP_PROTOCOL_VERSION 2
+#define AP_PROTOCOL_VERSION 3
 #define AP_SCAN_ACTIVE      0x4E414353   /* "SCAN" */
 
 #define GOAL_WALTER 0x1     /* Walter beaten: went from his room straight into Death's */

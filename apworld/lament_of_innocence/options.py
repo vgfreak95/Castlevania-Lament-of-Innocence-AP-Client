@@ -26,9 +26,10 @@ class EnemyDropSanity(Toggle):
 
 
 class LoIDeathLink(DeathLink):
-    """NOT IMPLEMENTED YET: the client doesn't send or receive deaths. Ignored for now."""
-    display_name = "Death Link (not implemented)"
-    visibility = Visibility.none
+    """When Leon dies, everyone else with Death Link dies too, and the other way round.
+    A death you receive kills Leon as soon as normal gameplay allows (not during menus or
+    message boxes). The client's /deathlink command turns it on or off for a session."""
+    display_name = "Death Link"
 
 
 @dataclass

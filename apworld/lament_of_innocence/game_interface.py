@@ -29,10 +29,12 @@ EV_PICKUP, EV_LOCATION = 0, 1
 
 # ---- status block (ap.h) ----
 STATUS = 0x000FCF00
-STATUS_STRUCT = struct.Struct("<5I")  # magic, version, goal, scan, client_ticks
+# magic, version, goal, scan, client_ticks, hud_off, deaths (game), kill_req (client)
+STATUS_STRUCT = struct.Struct("<8I")
 STATUS_MAGIC = 0x54535041           # "APST"
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 STATUS_CLIENT_TICKS = STATUS + 16
+STATUS_KILL_REQ = STATUS + 28
 GOAL_WALTER, GOAL_DEATH = 0x1, 0x2
 
 # ---- message queue (msgbox.h) ----
@@ -80,6 +82,8 @@ class GameStatus:
     scan: bool
     stage: int
     room: int
+    deaths: int = 0      # Leon's deaths since boot, without the ones DeathLink caused
+    kill_req: int = 0    # DeathLink kills requested by the client so far
 
 
 def game_text(raw: bytes) -> str:
@@ -126,12 +130,20 @@ class LoIInterface:
 
     # ---- status ----
     def status(self) -> GameStatus:
-        raw = self.mem.read(STATUS, STATUS_STRUCT.size + 4)   # 20 bytes, read as 24
-        magic, _version, goal, scan, _ticks = STATUS_STRUCT.unpack_from(raw)
+        raw = self.mem.read(STATUS, STATUS_STRUCT.size)
+        magic, _version, goal, scan, _ticks, _hud, deaths, kill_req = STATUS_STRUCT.unpack_from(raw)
         stage, room = struct.unpack("<2H", self.mem.read(CUR_STAGE, 4))
         if magic != STATUS_MAGIC:
-            goal, scan = 0, 0
-        return GameStatus(goal=goal, scan=scan == 0x4E414353, stage=stage, room=room)
+            goal, scan, deaths, kill_req = 0, 0, 0, 0
+        return GameStatus(goal=goal, scan=scan == 0x4E414353, stage=stage, room=room,
+                          deaths=deaths, kill_req=kill_req)
+
+    # ---- DeathLink ----
+    def request_kill(self) -> None:
+        """Kill Leon for a received DeathLink: the game acts once per change of kill_req, as soon
+        as gameplay allows it."""
+        kill_req, = struct.unpack("<I", self.mem.read(STATUS_KILL_REQ, 4))
+        self.mem.write32(STATUS_KILL_REQ, (kill_req + 1) & 0xFFFFFFFF)
 
     def heartbeat(self) -> None:
         """Tells the game a client is polling: it then leaves the "Sent ..." popups to us."""

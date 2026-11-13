@@ -18,8 +18,8 @@ from CommonClient import (ClientCommandProcessor, CommonContext, get_base_parser
 from NetUtils import ClientStatus, NetworkItem
 
 from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS
-from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, GameMismatch, LoIInterface,
-                             build_key_map)
+from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, GameMismatch, GameStatus,
+                             LoIInterface, build_key_map)
 from .pine import DEFAULT_SLOT, Pine, PineError
 
 POLL_INTERVAL = 0.1           # seconds between game polls (the event ring holds 8 events)
@@ -39,6 +39,13 @@ class LoICommandProcessor(ClientCommandProcessor):
         """Toggle the in-game "Sent X to Y" popups."""
         self.ctx.popups = not self.ctx.popups
         self.output(f"Sent-item popups {'on' if self.ctx.popups else 'off'}")
+        return True
+
+    def _cmd_deathlink(self) -> bool:
+        """Toggle DeathLink for this session (the slot's option sets the default)."""
+        enable = "DeathLink" not in self.ctx.tags
+        asyncio.create_task(self.ctx.update_death_link(enable))
+        self.output(f"DeathLink {'on' if enable else 'off'}")
         return True
 
     def _cmd_slot(self, slot: str = "") -> bool:
@@ -72,6 +79,8 @@ class LoIContext(CommonContext):
         self.unknown_keys: Set[int] = set()
         self.goal_sent = False
         self.pending_popups: List[str] = []
+        self.last_deaths: Optional[int] = None   # game's death counter last seen; None = re-read
+        self.pending_kills = 0                   # received DeathLinks not yet passed to the game
         unmapped = sum(1 for rec in LOCATIONS if rec.get("game_key") is None)
         if unmapped:
             logger.warning(f"{unmapped} locations have no game_key yet (run tools/loc_scan.py); "
@@ -92,8 +101,13 @@ class LoIContext(CommonContext):
         if cmd == "Connected":
             self.slot_data = args.get("slot_data") or {}
             self.goal_sent = False
+            asyncio.create_task(self.update_death_link(bool(self.slot_data.get("death_link"))))
         elif cmd == "PrintJSON" and self.popups:
             self._queue_sent_popup(args)
+
+    def on_deathlink(self, data: dict) -> None:
+        super().on_deathlink(data)        # logs who died
+        self.pending_kills += 1
 
     async def disconnect(self, allow_autoreconnect: bool = False):
         self.slot_data = {}
@@ -166,11 +180,28 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
             await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
             ctx.goal_sent = True
             logger.info("Goal complete!")
+        await deathlink_tick(ctx, game, status)
 
     while ctx.pending_popups:
         if not await asyncio.to_thread(game.post_message, ctx.pending_popups[0]):
             break                      # queue full; try again next poll
         ctx.pending_popups.pop(0)
+
+
+async def deathlink_tick(ctx: LoIContext, game: LoIInterface, status: GameStatus) -> None:
+    """Leon's new deaths -> DeathLink; received DeathLinks -> kill requests. The game doesn't count
+    deaths it caused for a received DeathLink, so those don't echo back."""
+    if ctx.last_deaths is None or status.deaths < ctx.last_deaths:
+        ctx.last_deaths = status.deaths          # first poll, console reset or save state
+    elif status.deaths > ctx.last_deaths:
+        ctx.last_deaths = status.deaths
+        if "DeathLink" in ctx.tags and ctx.server:
+            name = ctx.player_names.get(ctx.slot, "Leon")
+            await ctx.send_death(f"{name} fell in the Lament of Innocence.")
+    if ctx.pending_kills:
+        if "DeathLink" in ctx.tags:
+            await asyncio.to_thread(game.request_kill)
+        ctx.pending_kills = 0                    # several at once kill Leon once
 
 
 async def game_loop(ctx: LoIContext) -> None:
@@ -186,6 +217,7 @@ async def game_loop(ctx: LoIContext) -> None:
                 await asyncio.to_thread(pine.connect)
                 game = LoIInterface(pine)
                 await asyncio.to_thread(game.check_game)
+                ctx.last_deaths = None           # new session: don't send old deaths
                 ctx.game_state = f"connected on PINE slot {ctx.pine_slot}"
                 logger.info(f"Connected to Lament of Innocence in PCSX2 (PINE slot {ctx.pine_slot}).")
             await game_tick(ctx, game)
