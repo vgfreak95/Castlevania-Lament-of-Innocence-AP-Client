@@ -38,4 +38,8 @@ static inline int msg_post(const char *text)
 /* Show queued messages; call once per frame, also on frozen frames (see frame_end_hook). */
 void msgbox_tick(void);
 
+/* Nonzero after a few frames of plain gameplay with no popup showing: the world isn't frozen or
+ * paused and no game message box is open (so not mid-save, mid-event or in a menu). */
+int msgbox_game_idle(void);
+
 #endif

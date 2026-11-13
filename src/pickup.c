@@ -406,8 +406,8 @@ static void recv_tick(void)
     q->applied = applied;              /* tell the client where this save is */
     if (q->magic != RECV_MAGIC || applied >= q->count)
         return;
-    if (IsWorldFrozen() || MSGQ->head - MSGQ->tail >= MSGQ_SLOTS)
-        return;                        /* wait for normal gameplay and room for the message */
+    if (!msgbox_game_idle() || MSGQ->head - MSGQ->tail >= MSGQ_SLOTS)
+        return;                        /* wait for plain gameplay (not mid-save) and room for the message */
     e = &q->ring[applied % RECV_SLOTS];
     if (e->index != applied)
         return;                        /* the client hasn't written this item yet */
