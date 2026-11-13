@@ -35,9 +35,19 @@ hooks = [
     { site = 0x0043A958, original = 0x0C10FC9C, function = "ending_hook" },        # jal Ending_Update in GameStateManager (state 0xD)
 ]
 
+[patch.minimap]
+title = "Minimap"
+description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups."
+base = 0x000E0000
+sources = ["src/minimap.c"]
+hooks = [
+    { site = 0x00439EC8, original = 0x0C11820A, function = "minimap_hook" },       # jal Player_UpdateStep in GameplayFrame case 0 (skipped while frozen)
+    { site = 0x00439F00, original = 0x0C1109CC, function = "minimap_input_hook" }, # jal Obj_UpdateAll in GameplayFrame case 0 (runs while frozen): R3, settings menu
+]
+
 # ---- pnach files ----
 # Each [pnach.<name>] is written to <dir>/<crc>.pnach: the "Debug printf" group, then its patches.
 
 [pnach.ap]
 dir = "build"
-patches = ["pickup"]
+patches = ["pickup", "minimap"]

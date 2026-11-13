@@ -406,8 +406,8 @@ static void recv_tick(void)
     q->applied = applied;              /* tell the client where this save is */
     if (q->magic != RECV_MAGIC || applied >= q->count)
         return;
-    if (IsWorldFrozen() || MSGQ->head - MSGQ->tail >= MSGQ_SLOTS)
-        return;                        /* wait for normal gameplay and room for the message */
+    if (!msgbox_game_idle() || MSGQ->head - MSGQ->tail >= MSGQ_SLOTS)
+        return;                        /* wait for plain gameplay (not mid-save) and room for the message */
     e = &q->ring[applied % RECV_SLOTS];
     if (e->index != applied)
         return;                        /* the client hasn't written this item yet */
@@ -465,6 +465,39 @@ int ending_hook(void)
     return Ending_Update();
 }
 
+/* ---- DeathLink ----
+ * Leon's deaths are counted in AP_STATUS->deaths for the client to send; a received death (the
+ * client bumps AP_STATUS->kill_req) kills Leon the way the damage handler does (0x467178: HP to
+ * 0, then the dead flag), once gameplay has been calm for a moment. That death isn't counted, so
+ * it doesn't echo back out. The client decides whether DeathLink is on; this side just acts. */
+static int was_dead;           /* Leon's dead flag last frame */
+static int link_kill;          /* the next death is one we caused for a received DeathLink */
+static u32 kills_done;         /* AP_STATUS->kill_req value already acted on */
+
+static void deathlink_tick(void)
+{
+    volatile ApStatus *st = AP_STATUS;
+    int dead = Player_TestFlag(0, PLAYER_FLAG_DEAD) != 0;
+
+    if (dead && !was_dead) {
+        if (link_kill) {
+            link_kill = 0;
+        } else {
+            st->deaths = st->deaths + 1;
+            GamePrintf("[deathlink] Leon died (%d)\n", st->deaths);
+        }
+    }
+    was_dead = dead;
+
+    if (st->kill_req != kills_done && !dead && msgbox_game_idle()) {
+        kills_done = st->kill_req;
+        link_kill = 1;
+        AddHP(-PS_MAX_HP - 1.0f);                  /* clamps at 0 */
+        Player_SetFlag(0, PLAYER_FLAG_DEAD, 1);
+        GamePrintf("[deathlink] killed by a received death\n");
+    }
+}
+
 /* ---- pickups left in this room ----
  * Bottom-right text: AP pickup locations (ap_locations.h) in the current room whose collected flag
  * isn't set yet. Hidden while the world is frozen (events, message boxes) and when the debug
@@ -508,12 +541,18 @@ void frame_end_hook(void)
         st->scan = 0;
         st->client_ticks = 0;
         st->hud_off = 0;
+        st->deaths = 0;
+        st->kill_req = 0;
+        kills_done = 0;
+        link_kill = 0;
+        was_dead = 0;
         st->version = AP_PROTOCOL_VERSION;
         st->magic = AP_STATUS_MAGIC;
     }
     st->version = AP_PROTOCOL_VERSION;
     client_watch();
     goal_tick();
+    deathlink_tick();
     recv_tick();
     msgbox_tick();
 }
