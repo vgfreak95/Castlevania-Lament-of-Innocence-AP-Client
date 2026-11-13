@@ -298,5 +298,14 @@
     "iso_offset": null,
     "game_key": 835,
     "excluded": true
+  },
+  {
+    "name": "PotMM: HP Max Up (After Doppelganger 2)",
+    "ap_id": 207358112,
+    "region": "PotMM",
+    "kind": "pickup",
+    "vanilla_item": 144,
+    "iso_offset": null,
+    "game_key": 18112
   }
 ]
