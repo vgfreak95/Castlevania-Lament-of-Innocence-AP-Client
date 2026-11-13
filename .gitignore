@@ -1,4 +1,11 @@
 build/
+logs/
 __pycache__/
 .pytest_cache/
 *.pyc
+
+# AI tooling, agents and plans (local only)
+.claude/
+.planning/
+CLAUDE.md
+CLAUDE.local.md

@@ -7,12 +7,23 @@ usage: py -3 tools/build.py [--install [PNACH]]   (Windows: .\\build.ps1 [-Insta
 Compiles with build.sh, in the [build] docker_image container or, when that is "", with the PS2
 toolchain on PATH. --install copies [pnach.PNACH] (default: [install] pnach) to the PCSX2 patches
 folder ([install] patches_dir, or PCSX2's default for this OS).
+
+Patches can come from another checkout next to this one, so shared code lives in one place:
+    [import.ap]
+    config = "../Castlevania-Lament-of-Innocence-AP-Client/config.toml"
+    patches = ["pickup", "minimap"]
+adds those [patch.*] tables as if they were written here, with their sources rewritten relative
+to this folder. The imported checkout's tools/gen_ap_locations.py (if any) runs before compiling.
+The Docker build mounts the parent folder, so these ../ paths resolve inside the container too.
+This file is the same in both checkouts; keep it that way.
 """
 import argparse
+import importlib.util
 import os
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 if sys.version_info < (3, 11):
@@ -21,7 +32,36 @@ if sys.version_info < (3, 11):
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'tools'))
 import bin2pnach  # noqa: E402
-import gen_ap_locations  # noqa: E402
+
+
+def run_generator(checkout):
+    """Runs <checkout>/tools/gen_ap_locations.py (src/ap_locations.h, for pickup.c), if present."""
+    path = checkout / 'tools' / 'gen_ap_locations.py'
+    if not path.exists():
+        return
+    spec = importlib.util.spec_from_file_location(f'gen_ap_locations_{checkout.name}', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.generate()
+
+
+def import_patches(config):
+    """Adds the [patch.*] tables listed under [import.*] from other checkouts' config.toml."""
+    for key, imp in config.get('import', {}).items():
+        other_config = (ROOT / imp['config']).resolve()
+        other_root = other_config.parent
+        with open(other_config, 'rb') as f:
+            other = tomllib.load(f)
+        prefix = Path(os.path.relpath(other_root, ROOT)).as_posix()
+        for name in imp['patches']:
+            if name not in other.get('patch', {}):
+                sys.exit(f'[import.{key}]: no [patch.{name}] in {other_config}')
+            if name in config['patch']:
+                sys.exit(f'[import.{key}]: [patch.{name}] is also defined here')
+            patch = dict(other['patch'][name])
+            patch['sources'] = [f'{prefix}/{s}' for s in patch['sources']]
+            config['patch'][name] = patch
+        run_generator(other_root)
 
 
 def expand_sources(sources):
@@ -52,7 +92,8 @@ def write_patch_list(config):
 def compile_patches(config):
     image = config['build']['docker_image']
     if image:
-        cmd = ['docker', 'run', '--rm', '-v', f'{ROOT}:/src', '-w', '/src']
+        # the parent folder, so sources imported from a neighbouring checkout (../...) are visible
+        cmd = ['docker', 'run', '--rm', '-v', f'{ROOT.parent}:/work', '-w', f'/work/{ROOT.name}']
         if hasattr(os, 'getuid'):  # Linux/macOS: build/ files owned by the user, not root
             cmd += ['-u', f'{os.getuid()}:{os.getgid()}']
         cmd += [image, 'sh', 'build.sh']
@@ -87,7 +128,8 @@ def main():
 
     os.chdir(ROOT)
     config = bin2pnach.load_config(args.config)
-    gen_ap_locations.generate()    # src/ap_locations.h, for pickup.c
+    run_generator(ROOT)            # src/ap_locations.h, for pickup.c (when this checkout has it)
+    import_patches(config)
     write_patch_list(config)
     compile_patches(config)
     written = {name: Path(bin2pnach.write_pnach(config, name)) for name in config['pnach']}
