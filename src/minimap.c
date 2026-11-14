@@ -245,12 +245,33 @@ static u8 *map_model(u8 *file)
     return 0;
 }
 
-static void add_vertex(RoomBox *b, float mx, float mz)
+/* nonzero when the model's part matrices place the parts (Anti-Soul Mystery Lab): its meshes are
+ * then in each room's own frame, and the matrix of a room's part equals its piece's pos and yaw.
+ * Elsewhere the matrices carry no translation and the meshes are already in area map space. */
+static int model_parts_local(const u8 *model)
+{
+    int count = *(const int *)(model + MODEL_NODE_COUNT), i;
+    const float *m = (const float *)(model + *(const int *)(model + MODEL_NODE_OFS));
+
+    if (count <= 0 || count > 1024)
+        return 0;
+    for (i = 0; i < count; i++, m += 16)
+        if (m[12] > 0.5f || m[12] < -0.5f || m[14] > 0.5f || m[14] < -0.5f)
+            return 1;
+    return 0;
+}
+
+/* (mx, mz): a mesh vertex, in area map space, or with `local` already in the room's frame */
+static void add_vertex(RoomBox *b, float mx, float mz, int local)
 {
     const float *pos = (const float *)(b->piece + PIECE_POS);
     float dx = mx - pos[0], dz = mz - pos[2];
     float lx = b->c * dx - b->s * dz, lz = b->s * dx + b->c * dz;   /* RotY(-yaw) */
 
+    if (local) {
+        lx = mx;
+        lz = mz;
+    }
     if (!b->ok) {
         b->x0 = b->x1 = lx;
         b->z0 = b->z1 = lz;
@@ -266,7 +287,7 @@ static void add_vertex(RoomBox *b, float mx, float mz)
 static void build_cache(u8 *file)
 {
     u8 *model, *mesh;
-    int i, k, n;
+    int i, k, n, local;
 
     cached_file = file;
     box_count = 0;
@@ -297,6 +318,7 @@ static void build_cache(u8 *file)
     model = map_model(file);
     if (!model)
         return;
+    local = model_parts_local(model);
     n = *(int *)(model + MODEL_MESH_COUNT);
     mesh = model + *(int *)(model + MODEL_MESH_OFS);
     for (i = 0; i < n; i++) {
@@ -317,13 +339,14 @@ static void build_cache(u8 *file)
                 num = (w >> 16) & 0xFF;
                 v = (const int *)(mesh + q + 4);
                 for (k = 0; k < num; k++, v += 3)
-                    add_vertex(&boxes[owner], (float)v[0] / 16.0f, -(float)v[2] / 16.0f);
+                    add_vertex(&boxes[owner], (float)v[0] / 16.0f, -(float)v[2] / 16.0f, local);
                 q += 12 * num;
             }
         }
         mesh += size;
     }
-    GamePrintf("[minimap] map file %d: %d pieces cached\n", *(volatile int *)0x00B90970, box_count);
+    GamePrintf("[minimap] map file %d: %d pieces cached%s\n", *(volatile int *)0x00B90970, box_count,
+               local ? " (room-local meshes)" : "");
 }
 
 /* ---- rooms ---- */

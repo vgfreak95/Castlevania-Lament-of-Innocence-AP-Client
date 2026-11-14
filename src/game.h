@@ -333,6 +333,8 @@ u8 *Map_GetCurrentPiece(void);    /* 0x6C1048: current room's piece for Leon's f
 #define PIECE_OUTLINE  0x1E
 #define PIECE_POS      0x40        /* float x, y, z, yaw */
 #define PIECE_SCALE    0x50
+#define MODEL_NODE_OFS   0x08      /* offset of the part matrices, float[16] each, row-vector */
+#define MODEL_NODE_COUNT 0x0C      /* matrices: parts + one root per floor */
 #define MODEL_MESH_COUNT 0x20
 #define MODEL_MESH_OFS   0x24
 #define MESH_PART        0x43
