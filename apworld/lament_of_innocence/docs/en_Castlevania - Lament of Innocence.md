@@ -85,8 +85,9 @@ for Leon.
 - Save rooms are red. Rooms where you've collected every Archipelago pickup turn green. Rooms that
   still have unchecked pickups get an orange marker.
 - Room transitions (the doorways to other rooms) appear once you've been in a room.
-- Tap **L3** to show or hide it. Hold **L3** for about a second to open its settings. The game
-  pauses while the settings are open.
+- Tap **L3** to show or hide it. Hold **L3** for about 3 seconds to open its settings (long
+  enough that it doesn't open by accident in combat). The game pauses while the settings are
+  open.
 
 | Setting | Choices |
 |---------|---------|
