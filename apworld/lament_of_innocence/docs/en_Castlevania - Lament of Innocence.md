@@ -18,6 +18,11 @@ the way up to Walter.
 - Armour, accessories and relics, including ones normally sold in Rinaldo's shop.
 - The HP, Heart and MP Max Ups found in the world.
 - Filler: potions, hearts, money, food.
+- With `area_keys` (on by default): five new area keys, one for each area the hub's floating
+  rocks lead to (House of Sacred Remains, Anti-Soul Mystery Lab, Dark Palace of Waterfalls,
+  Garden Forgotten by Time, Ghostly Theatre). An area's rock won't lift you without its key. You
+  start with `starting_area_keys` of them (1 by default), always including the key of
+  `starting_area` (random by default); the rest are in the item pool.
 
 ## What is the goal?
 

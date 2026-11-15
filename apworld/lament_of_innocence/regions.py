@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Callable, Dict, Optional
 from BaseClasses import CollectionState, LocationProgressType, Region
 
 from .data_loader import LOCATIONS
-from .items import create_event
+from .items import AREA_KEYS, create_event
 from .locations import AREA_BOSSES, BOSS_REGION, LoILocation, boss_event_item
 from .rules import DEATH_EVENT, WALTER_EVENT, boss_rule, location_rule, pagoda_seal, walter_stairs
 
@@ -33,8 +33,12 @@ def create_regions(world: "LoIWorld") -> None:
     connect("Menu", "PttDA")
     # VERIFY: are all five areas (HoSR, ASML, DPoW, GFbT, Theatre) open from the Warp Room at
     # the start of a vanilla game, with no item or boss needed?
-    for area in ["HoSR", "ASML", "DPoW", "GFbT", "Theatre"]:
-        connect("PttDA", area)
+    # Area Keys: each area's floating rock in the hub only lifts with its key (src/stagekeys.c).
+    for area, key in AREA_KEYS.items():
+        if world.options.area_keys:
+            connect("PttDA", area, lambda state, key=key: state.has(key, player))
+        else:
+            connect("PttDA", area)
     # VERIFY: is the Prison of Eternal Torture reachable from the start? The randomizer gives its
     # High Potion no requirement and only puts the Unlock Jewel on the boss door inside.
     connect("PttDA", "PoET")

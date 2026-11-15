@@ -344,4 +344,36 @@ u8 *Map_GetCurrentPiece(void);    /* 0x6C1048: current room's piece for Leon's f
 #define ROOM_STATE (*(u32 *volatile *)0x00797D40)
 #define ROOM_STATE_COUNT (*(volatile int *)0x00797D44)
 
+/* ---- inventory and key items (stagekeys.c) ----
+ * Item categories (range table @ 0x738BC8): 5 = key/event items, IDs 0x55-0x7E; 0x74-0x7E have
+ * blank info records (flag +0x34 = 0, name text 0x293 = ""). Key item info records: 0x48 bytes
+ * each from 0x73B978, by ID - 0x55: +0x00 name text, +0x04 name text (game mode 2), +0x0C
+ * description text (+0x1C the same; +0x08 / +0x18 are text 0x1E1 = ""), +0x20 model, +0x28 index
+ * within its family (the five keys 0-4), +0x2C pickup sound, +0x34 1 = in use.
+ * Pocket of category 5 (Inv_GetPocket 0x469408): g_PlayerStatus+0x1A0, 42 slots (0x73DC68) of
+ * {s16 id, s16 count}; inside the saved part of the struct. */
+int Inv_AddItem(int id, int count);     /* 0x468FB8: returns the part that didn't fit */
+#define KEYITEM_FIRST    0x55
+#define KEYITEM_INFO(id) ((u32 *)(0x0073B978 + ((id) - KEYITEM_FIRST) * 0x48))
+#define ITEMINFO_WORDS   (0x48 / 4)
+#define INV_KEY_POCKET   ((volatile short *)(PLAYER_STATUS + 0x1A0))
+#define INV_KEY_SLOTS    42
+
+/* ---- hub warp rocks (stage 7 room 3) ----
+ * Each of the hub's floating rocks is an actor run by 0x67CDF0 (update function at actor +0x240,
+ * set by 0x67D7E0). Its state is at +0x138 (state stack at +0x130, set with 0x4EF5D8):
+ * 3 idle -> Leon steps on: sound, 4 (glow) -> 30 frames: 5 (player control and camera taken)
+ * -> 30 more frames on it: 6, 7 (the rock rises with him into the stage's door trigger, high
+ * above). Stepping off in 2, 4 or 5 goes back to 3 and hands control back. The "standing on me"
+ * test is WarpRock_PlayerOn (0x67CDA8, nonzero = on), called in states 2-5. The rock's index is
+ * the s16 at +2 of its spawn record (actor +0x0C): 0 Theatre, 1 GFbT, 2 DPoW, 3 HoSR, 4 ASML
+ * (it arrives at entrance 11 - index); 5 is the centre rock (Boss Rush, spawned by 0x529788). */
+int WarpRock_PlayerOn(u8 *rock);        /* 0x67CDA8 */
+#define ROCK_SPAWN_RECORD 0x0C
+#define ROCK_RECORD_INDEX 0x02          /* s16 */
+
+/* text bank (GetText 0x4552C0): *(0xB61108) + 0x10 = char *[text ID]; 1111 entries in retail */
+#define TEXT_BANK (*(u8 *volatile *)0x00B61108)
+#define TEXT_BANK_TABLE 0x10
+
 #endif

@@ -108,7 +108,7 @@ class TestPagoda(LoITestBase):
 
 
 class TestDeathGoal(LoITestBase):
-    options = {"goal": "defeat_death"}
+    options = {"goal": "defeat_death", "area_keys": False}
 
     def test_death(self) -> None:
         self.assertBeatable(False)

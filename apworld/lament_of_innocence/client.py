@@ -25,6 +25,7 @@ from .pine import DEFAULT_SLOT, Pine, PineError
 POLL_INTERVAL = 0.1           # seconds between game polls (the event ring holds 8 events)
 RECONNECT_INTERVAL = 2.0
 GOAL_OPTION_WALTER, GOAL_OPTION_DEATH = 0, 1
+ALL_AREA_LOCKS = 0x1F         # the five hub areas (items.py AREA_KEYS), src/stagekeys.h
 
 
 class LoICommandProcessor(ClientCommandProcessor):
@@ -173,6 +174,9 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
             await ctx.check_locations(new_locations)
 
     if ctx.slot is not None:
+        # every poll: the game forgets it on a console reset
+        locks = ALL_AREA_LOCKS if ctx.slot_data.get("area_keys") else 0
+        await asyncio.to_thread(game.set_area_locks, locks)
         await asyncio.to_thread(game.sync_items, ctx.game_items())
         status = await asyncio.to_thread(game.status)
         if not ctx.goal_sent and ctx.goal_reached(status.goal) and ctx.server:

@@ -29,12 +29,14 @@ EV_PICKUP, EV_LOCATION = 0, 1
 
 # ---- status block (ap.h) ----
 STATUS = 0x000FCF00
-# magic, version, goal, scan, client_ticks, hud_off, deaths (game), kill_req (client)
-STATUS_STRUCT = struct.Struct("<8I")
+# magic, version, goal, scan, client_ticks, hud_off, deaths (game), kill_req (client),
+# area_locks (client)
+STATUS_STRUCT = struct.Struct("<9I")
 STATUS_MAGIC = 0x54535041           # "APST"
-PROTOCOL_VERSION = 3
+PROTOCOL_VERSION = 4
 STATUS_CLIENT_TICKS = STATUS + 16
 STATUS_KILL_REQ = STATUS + 28
+STATUS_AREA_LOCKS = STATUS + 32     # bit i = area i (items.py AREA_KEYS) needs its key
 GOAL_WALTER, GOAL_DEATH = 0x1, 0x2
 
 # ---- message queue (msgbox.h) ----
@@ -131,7 +133,8 @@ class LoIInterface:
     # ---- status ----
     def status(self) -> GameStatus:
         raw = self.mem.read(STATUS, STATUS_STRUCT.size)
-        magic, _version, goal, scan, _ticks, _hud, deaths, kill_req = STATUS_STRUCT.unpack_from(raw)
+        magic, _version, goal, scan, _ticks, _hud, deaths, kill_req, _locks = \
+            STATUS_STRUCT.unpack_from(raw)
         stage, room = struct.unpack("<2H", self.mem.read(CUR_STAGE, 4))
         if magic != STATUS_MAGIC:
             goal, scan, deaths, kill_req = 0, 0, 0, 0
@@ -144,6 +147,14 @@ class LoIInterface:
         as gameplay allows it."""
         kill_req, = struct.unpack("<I", self.mem.read(STATUS_KILL_REQ, 4))
         self.mem.write32(STATUS_KILL_REQ, (kill_req + 1) & 0xFFFFFFFF)
+
+    # ---- Area Keys ----
+    def set_area_locks(self, mask: int) -> None:
+        """Which hub areas need their key (bit i = items.py AREA_KEYS[i]). Written every poll:
+        the game clears it on a console reset."""
+        current, = struct.unpack("<I", self.mem.read(STATUS_AREA_LOCKS, 4))
+        if current != mask:
+            self.mem.write32(STATUS_AREA_LOCKS, mask)
 
     def heartbeat(self) -> None:
         """Tells the game a client is polling: it then leaves the "Sent ..." popups to us."""

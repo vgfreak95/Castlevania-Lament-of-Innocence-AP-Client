@@ -54,7 +54,9 @@ def patch_section(name, patch, build_dir, author):
     for h in patch['hooks']:
         if h['function'] not in syms:
             raise SystemExit(f"{name}: hook function {h['function']} not found in {name}.map")
-        hooks.append((h['site'], h['original'], 0x0C000000 | (syms[h['function']] >> 2), h['function']))
+        # jal by default; jump = true writes a j instead (takes over a whole function at its entry)
+        opcode = 0x08000000 if h.get('jump') else 0x0C000000
+        hooks.append((h['site'], h['original'], opcode | (syms[h['function']] >> 2), h['function']))
 
     lines = [
         f"[{patch['title']}]",

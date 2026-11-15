@@ -18,15 +18,23 @@ pnach = "ap"                    # the [pnach.*] that --install copies when none 
 #   base     load address in the unused EE RAM cave 0x96000-0xFFFFF
 #   sources  C files (wildcards allowed); cflags = extra compiler flags
 #   hooks    jal instructions redirected to the patch: the call site, the original instruction
-#            (checked against SLUS_207.33, only written to the pnach as a comment) and the function
+#            (checked against SLUS_207.33, only written to the pnach as a comment) and the function;
+#            jump = true writes a j instead: it takes over the whole function at its entry (returns
+#            straight to the game's caller; the original delay slot instruction still runs first)
 
 # mailbox at 0xFC000 (src/pickup.c), message queue at 0xFD000 (src/msgbox.h)
 [patch.pickup]
 title = "Archipelago Pickups"
 description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000. Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
 base = 0x000F9000
-sources = ["src/pickup.c", "src/msgbox.c"]
+sources = ["src/pickup.c", "src/msgbox.c", "src/stagekeys.c"]
 hooks = [
+    { site = 0x004552C0, original = 0x3C0200B6, function = "gettext_hook", jump = true },  # GetText entry (lui v0, 0xB6): area key names
+    { site = 0x0067D28C, original = 0x0C19F36A, function = "warp_rock_hook" },     # jal WarpRock_PlayerOn in the hub rock update (state 2)
+    { site = 0x0067D2C4, original = 0x0C19F36A, function = "warp_rock_hook" },     # (state 3, idle)
+    { site = 0x0067D33C, original = 0x0C19F36A, function = "warp_rock_hook" },     # (state 4)
+    { site = 0x0067D3A4, original = 0x0C19F36A, function = "warp_rock_hook" },     # (state 5)
+    { site = 0x006B0338, original = 0x0C1ACEE0, function = "hub_tutorial_stub" },  # jal GetRoomItemFlag in the hub's tutorial script (Map 1 -> HoSR rock)
     { site = 0x00447A08, original = 0x0C111C1E, function = "pickup_hook" },        # jal Item_OnPickup in ItemObj_CheckTouch
     { site = 0x0056AE8C, original = 0x0C112BAC, function = "placed_spawn_stub" },  # jal ItemObj_Spawn in PlacedItem_Spawn
     { site = 0x00439F08, original = 0x0C114ACA, function = "frame_end_hook" },     # jal FrameEnd (runs while frozen)

@@ -21,11 +21,14 @@ typedef struct {
                            ones it caused for a received DeathLink */
     u32 kill_req;       /* DeathLink, written by the client: bumped for every received death; the
                            game kills Leon once per change */
+    u32 area_locks;     /* Area Keys, written by the client every poll: bit i = area i of
+                           stagekeys.h needs its key (the hub's rock won't lift without it); 0
+                           after a console reset until the client writes it */
 } ApStatus;
 
 #define AP_STATUS ((volatile ApStatus *)0x000FCF00)
 #define AP_STATUS_MAGIC     0x54535041   /* "APST" */
-#define AP_PROTOCOL_VERSION 3
+#define AP_PROTOCOL_VERSION 4
 #define AP_SCAN_ACTIVE      0x4E414353   /* "SCAN" */
 
 #define GOAL_WALTER 0x1     /* Walter beaten: went from his room straight into Death's */

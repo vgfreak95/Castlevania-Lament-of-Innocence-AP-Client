@@ -19,7 +19,18 @@ FILLER_WEIGHTS: Dict[str, int] = {rec["name"]: rec["filler_weight"]
                                   for rec in ITEMS if rec["filler_weight"] > 0}
 DEFAULT_FILLER = "Potion"
 
+# Area Keys: hub area region -> its key, in the game's order (src/stagekeys.h: bit i of
+# AP_STATUS->area_locks = entry i). StartingArea's option values 0-4 follow the same order.
+AREA_KEYS: Dict[str, str] = {
+    "HoSR": "Sacred Remains Key",
+    "ASML": "Mystery Lab Key",
+    "DPoW": "Waterfall Palace Key",
+    "GFbT": "Forgotten Garden Key",
+    "Theatre": "Ghostly Theatre Key",
+}
+
 ITEM_GROUPS: Dict[str, Set[str]] = {
+    "Area Keys": set(AREA_KEYS.values()),
     "Whips": {"Whip of Flames", "Whip of Ice", "Whip of Lightning", "Vampire Killer"},
     "Keys": {"White Tiger Key", "Blue Dragon Key", "Red Phoenix Key", "Black Turtle Key",
              "Yellow Dragon Key"},
@@ -54,12 +65,26 @@ def get_filler_item_name(world: "LoIWorld") -> str:
 STARTING_ITEMS = ("Svarog Statue",)
 
 
+def pick_starting_area_keys(world: "LoIWorld") -> List[str]:
+    """The area keys the slot starts with (Area Keys on): the Starting Area's, then random
+    others up to Starting Area Keys."""
+    keys = list(AREA_KEYS.values())
+    first = keys[world.options.starting_area.value]   # "random" is resolved by Archipelago
+    others = [k for k in keys if k != first]
+    world.random.shuffle(others)
+    return [first] + others[:world.options.starting_area_keys.value - 1]
+
+
 def create_all_items(world: "LoIWorld") -> None:
     pool: List[LoIItem] = []
-    for name in STARTING_ITEMS:
+    area_keys = set(AREA_KEYS.values())
+    start = list(STARTING_ITEMS) + world.starting_area_keys
+    for name in start:
         world.multiworld.push_precollected(create_item(world, name))
     for rec in ITEMS:
-        for _ in range(rec["count"] - STARTING_ITEMS.count(rec["name"])):
+        if rec["name"] in area_keys and not world.options.area_keys:
+            continue                     # Area Keys off: the areas are open, no keys exist
+        for _ in range(rec["count"] - start.count(rec["name"])):
             pool.append(create_item(world, rec["name"]))
     unfilled = len(world.multiworld.get_unfilled_locations(world.player))
     if len(pool) > unfilled:
