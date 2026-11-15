@@ -48,8 +48,12 @@ class TestData(LoITestBase):
         self.assertEqual(by_name["PoET: High Potion"]["ap_id"], 207330111)
         self.assertEqual(by_name["ASML: Golem"]["ap_id"], 207331500)
         self.assertEqual(by_name["GFbT: Thunder Elemental"]["ap_id"], 207331508)
-        self.assertEqual(len({r["ap_id"] for r in LOCATIONS}), 121 + 30)   # + extra_locations.json
+        self.assertEqual(len({r["ap_id"] for r in LOCATIONS}), 121 + 31)   # + extra_locations.json
         self.assertEqual(by_name["HoSR: Room 3 $25 1"]["ap_id"], 207340192)
+        # a real location (not excluded): the HP Max Up after the second Doppelganger fight
+        potmm = by_name["PotMM: HP Max Up (After Doppelganger 2)"]
+        self.assertEqual(potmm["ap_id"], 207358112)
+        self.assertFalse(potmm.get("excluded"))
 
 
 class TestKeyDoors(LoITestBase):
