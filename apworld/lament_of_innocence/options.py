@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from Options import Choice, DeathLink, PerGameCommonOptions, Toggle, Visibility
+from Options import (Choice, DeathLink, DefaultOnToggle, PerGameCommonOptions, Range, Toggle,
+                     Visibility)
 
 
 class Goal(Choice):
@@ -11,6 +12,37 @@ class Goal(Choice):
     option_defeat_walter = 0
     option_defeat_death = 1
     default = 0
+
+
+class AreaKeys(DefaultOnToggle):
+    """Each of the five areas reached from the floating rocks in the Prelude's hub needs its own
+    key: Sacred Remains Key (House of Sacred Remains), Mystery Lab Key (Anti-Soul Mystery Lab),
+    Waterfall Palace Key (Dark Palace of Waterfalls), Forgotten Garden Key (Garden Forgotten by
+    Time) and Ghostly Theatre Key (Ghostly Theatre). Without the key, the area's rock won't lift.
+    You start with the keys picked by Starting Area and Starting Area Keys; the rest are in the
+    item pool."""
+    display_name = "Area Keys"
+
+
+class StartingArea(Choice):
+    """With Area Keys: the area whose key you start with. random (the default) picks one of the
+    five."""
+    display_name = "Starting Area"
+    option_house_of_sacred_remains = 0
+    option_anti_soul_mystery_lab = 1
+    option_dark_palace_of_waterfalls = 2
+    option_garden_forgotten_by_time = 3
+    option_ghostly_theatre = 4
+    default = "random"
+
+
+class StartingAreaKeys(Range):
+    """With Area Keys: how many area keys you start with. The Starting Area's key is always one
+    of them; the others are picked at random."""
+    display_name = "Starting Area Keys"
+    range_start = 1
+    range_end = 5
+    default = 1
 
 
 class TorchSanity(Toggle):
@@ -36,5 +68,8 @@ class LoIDeathLink(DeathLink):
 class LoIOptions(PerGameCommonOptions):
     goal: Goal
     death_link: LoIDeathLink
+    area_keys: AreaKeys
+    starting_area: StartingArea
+    starting_area_keys: StartingAreaKeys
     torch_sanity: TorchSanity
     enemy_drop_sanity: EnemyDropSanity

@@ -728,6 +728,46 @@
     "filler_weight": 0
   },
   {
+    "name": "Sacred Remains Key",
+    "game_id": 116,
+    "ap_id": 207330116,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Mystery Lab Key",
+    "game_id": 117,
+    "ap_id": 207330117,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Waterfall Palace Key",
+    "game_id": 118,
+    "ap_id": 207330118,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Forgotten Garden Key",
+    "game_id": 119,
+    "ap_id": 207330119,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Ghostly Theatre Key",
+    "game_id": 120,
+    "ap_id": 207330120,
+    "classification": "progression",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
     "name": "Red Orb",
     "game_id": 127,
     "ap_id": 207330127,

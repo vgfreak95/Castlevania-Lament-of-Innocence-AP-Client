@@ -9,7 +9,16 @@
  * gaps between their own boxes; opening ours in such a gap (and unfreezing the world when it
  * closes) left the save sequence waiting forever. */
 #define IDLE_FRAMES 15
-#define WORLD_PAUSED_BITS (*(volatile u8 *)0x00B36750)   /* World_SetPausedBit: bit 0 */
+
+/* World state bits @ 0xB36750 (one setter per bit, 0x438600-0x4387FC). Plain gameplay has only
+ * 0x800 (set by GameStateManager). Busy:
+ *   0x0001  paused (World_SetPausedBit)
+ *   0x0020, 0x0040  World_Freeze (IsWorldFrozen only tests bit 0)
+ *   0x4000  the save sequence: set from the save prompt until its last step, which comes ~0.7 s
+ *           after a cancelled save's prompt closes and calls MsgBox_Close on the shared box.
+ *           Seen in game (2026-11-15); its setter isn't identified. */
+#define WORLD_STATE_BITS (*(volatile u32 *)0x00B36750)
+#define WORLD_BUSY_BITS  0x4061
 
 static int box_open;       /* our message is showing */
 static int box_frames;     /* frames it has been open */
@@ -17,7 +26,17 @@ static int idle_frames;    /* consecutive frames of plain gameplay, capped at ID
 
 static int game_busy(u8 *box)
 {
-    return IsWorldFrozen() || (WORLD_PAUSED_BITS & 1) || *(volatile int *)(box + MSGBOX_OPEN_FLAG);
+    return IsWorldFrozen() || (WORLD_STATE_BITS & WORLD_BUSY_BITS)
+        || *(volatile int *)(box + MSGBOX_OPEN_FLAG);
+}
+
+/* we only open from plain gameplay, so the freeze and pause bit are ours to undo */
+static void end_popup(void)
+{
+    World_Unfreeze();
+    World_SetPausedBit(0);
+    box_open = 0;
+    idle_frames = 0;
 }
 
 int msgbox_game_idle(void)
@@ -52,16 +71,22 @@ void msgbox_tick(void)
         return;
     }
 
+    /* The box is shared: game code that closes it (MsgBox_Close clears the open flag) takes our
+     * popup away, and it would never report confirmed. Give the world back and show the same
+     * message again once the game is idle. */
+    if (!*(volatile int *)(box + MSGBOX_OPEN_FLAG)) {
+        GamePrintf("[msgbox] popup closed by the game; showing it again later\n");
+        end_popup();
+        return;
+    }
+
     {
         int done = MsgBox_Update(box);
         MsgBox_Draw(box);
         box_frames++;
         if (done && box_frames > MSG_MIN_FRAMES) {
             MsgBox_Close(box);
-            /* we only open from plain gameplay, so the freeze and pause bit are ours to undo */
-            World_Unfreeze();
-            World_SetPausedBit(0);
-            box_open = 0;
+            end_popup();
             q->tail = q->tail + 1;        /* the slot is free only once the box no longer shows it */
         }
     }

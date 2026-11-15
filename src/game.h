@@ -314,12 +314,24 @@ void Prim_SubmitLayer(u8 *obj, int layer);        /* 0x459E20: layer < 0x65, Dra
 /* ---- area map (the pause map's data, loaded at stage load and kept) ----
  * File pointer @ 0xB90974 (disc file id @ 0xB90970): +0 relocated flag (1), +4 piece count,
  * +0x30 piece pointers. Piece (0x60 bytes): +0 stage, +1 room, +2 floor, +8 u16 flags,
- * +0xB size in squares, +0x10 u16 part counts per kind, +0x1A u8[4] fill parts, +0x1E u8[4]
- * outline parts, +0x40 float x, y, z, yaw, +0x50 float scale x, y, z.
- * The pause map model follows the pieces (16-byte aligned, magic 0xFFFFxxxx): +0x20 mesh count,
- * +0x24 offset of the first mesh. Meshes are back to back, u32 byte size first, byte +0x43 =
- * part index; their VIF UNPACK V3-32 blocks (cmd byte 0x68, count = byte 2) hold int32 vertices
- * in area map space: map x = vx / 16, map z = -vz / 16. Leon -> map (pause map marker 0x6C3EB8):
+ * +0xB size in squares, +0x10 u16 part counts per kind (5 kinds), +0x1A u8[4] parts of kind 0,
+ * +0x1E u8[4] parts of kind 1, +0x40 float x, y, z, yaw, +0x50 float scale x, y, z.
+ * Despite the PIECE_FILL / PIECE_OUTLINE names: kind 0 is the room's WALL BAND (a ~20-unit
+ * border with gaps at the doorways) and kind 1 is its solid FLOOR shape (round, L-shaped, ...);
+ * the pause map colours kind 1 red for save rooms. A part can span several meshes.
+ * The pause map model follows the pieces (16-byte aligned, magic 0xFFFFxxxx): +0x08 part matrix
+ * offset, +0x0C matrix count, +0x20 mesh count, +0x24 offset of the first mesh. Meshes are back
+ * to back, u32 byte size first, byte +0x43 = part index. Their VIF stream, from +0x50, is one or
+ * more batches, each self-contained:
+ * - positions: UNPACK V3-32 (cmd byte 0x68, count = byte 2, VU address = low 10 bits) of int32
+ *   vertices, written with STCYCL CL=4 WL=1, so vertex k sits at VU address addr + 4k;
+ *   map x = vx / 16, map z = -vz / 16 (in the room's own frame where the part matrices carry a
+ *   translation, see minimap.c model_parts_local);
+ * - then the index list: UNPACK V4-16 (cmd byte 0x6D) to a higher address, u16 entries = VU
+ *   address of a vertex, bit 15 set = no drawing kick (the first two of each strip). Triangle
+ *   strip: entry k (k >= 2, bit 15 clear) draws entries k-2, k-1, k. Strips are short (wall
+ *   bands are mostly 4-entry quads).
+ * Leon -> map (pause map marker 0x6C3EB8):
  * piece.pos + piece.scale * RotY(piece.yaw) * 0.1 * (x, 0, z). */
 #define MAP_FILE (*(u8 *volatile *)0x00B90974)
 u8 *Map_GetCurrentPiece(void);    /* 0x6C1048: current room's piece for Leon's floor, or 0 */
@@ -333,13 +345,48 @@ u8 *Map_GetCurrentPiece(void);    /* 0x6C1048: current room's piece for Leon's f
 #define PIECE_OUTLINE  0x1E
 #define PIECE_POS      0x40        /* float x, y, z, yaw */
 #define PIECE_SCALE    0x50
+#define MODEL_NODE_OFS   0x08      /* offset of the part matrices, float[16] each, row-vector */
+#define MODEL_NODE_COUNT 0x0C      /* matrices: parts + one root per floor */
 #define MODEL_MESH_COUNT 0x20
 #define MODEL_MESH_OFS   0x24
 #define MESH_PART        0x43
 #define VIF_UNPACK_V3_32 0x68
+#define VIF_UNPACK_V4_16 0x6D      /* the index list */
 
 /* room state table: 12 bytes per room key, bit 0 of the first word = visited */
 #define ROOM_STATE (*(u32 *volatile *)0x00797D40)
 #define ROOM_STATE_COUNT (*(volatile int *)0x00797D44)
+
+/* ---- inventory and key items (stagekeys.c) ----
+ * Item categories (range table @ 0x738BC8): 5 = key/event items, IDs 0x55-0x7E; 0x74-0x7E have
+ * blank info records (flag +0x34 = 0, name text 0x293 = ""). Key item info records: 0x48 bytes
+ * each from 0x73B978, by ID - 0x55: +0x00 name text, +0x04 name text (game mode 2), +0x0C
+ * description text (+0x1C the same; +0x08 / +0x18 are text 0x1E1 = ""), +0x20 model, +0x28 index
+ * within its family (the five keys 0-4), +0x2C pickup sound, +0x34 1 = in use.
+ * Pocket of category 5 (Inv_GetPocket 0x469408): g_PlayerStatus+0x1A0, 42 slots (0x73DC68) of
+ * {s16 id, s16 count}; inside the saved part of the struct. */
+int Inv_AddItem(int id, int count);     /* 0x468FB8: returns the part that didn't fit */
+#define KEYITEM_FIRST    0x55
+#define KEYITEM_INFO(id) ((u32 *)(0x0073B978 + ((id) - KEYITEM_FIRST) * 0x48))
+#define ITEMINFO_WORDS   (0x48 / 4)
+#define INV_KEY_POCKET   ((volatile short *)(PLAYER_STATUS + 0x1A0))
+#define INV_KEY_SLOTS    42
+
+/* ---- hub warp rocks (stage 7 room 3) ----
+ * Each of the hub's floating rocks is an actor run by 0x67CDF0 (update function at actor +0x240,
+ * set by 0x67D7E0). Its state is at +0x138 (state stack at +0x130, set with 0x4EF5D8):
+ * 3 idle -> Leon steps on: sound, 4 (glow) -> 30 frames: 5 (player control and camera taken)
+ * -> 30 more frames on it: 6, 7 (the rock rises with him into the stage's door trigger, high
+ * above). Stepping off in 2, 4 or 5 goes back to 3 and hands control back. The "standing on me"
+ * test is WarpRock_PlayerOn (0x67CDA8, nonzero = on), called in states 2-5. The rock's index is
+ * the s16 at +2 of its spawn record (actor +0x0C): 0 Theatre, 1 GFbT, 2 DPoW, 3 HoSR, 4 ASML
+ * (it arrives at entrance 11 - index); 5 is the centre rock (Boss Rush, spawned by 0x529788). */
+int WarpRock_PlayerOn(u8 *rock);        /* 0x67CDA8 */
+#define ROCK_SPAWN_RECORD 0x0C
+#define ROCK_RECORD_INDEX 0x02          /* s16 */
+
+/* text bank (GetText 0x4552C0): *(0xB61108) + 0x10 = char *[text ID]; 1111 entries in retail */
+#define TEXT_BANK (*(u8 *volatile *)0x00B61108)
+#define TEXT_BANK_TABLE 0x10
 
 #endif

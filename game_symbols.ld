@@ -59,3 +59,5 @@ GsRegs_Init          = 0x004575E0;
 GsRegs_Set           = 0x00457630;
 Prim_SubmitLayer     = 0x00459E20;
 Map_GetCurrentPiece  = 0x006C1048;
+Inv_AddItem          = 0x00468FB8;
+WarpRock_PlayerOn    = 0x0067CDA8;

@@ -12,11 +12,13 @@
  * Hooks: jal ItemObj_Spawn @ 0x56AE8C (PlacedItem_Spawn), jal GetRoomItemFlag @ 0x56AE04
  * (PlacedItem_Spawn, for the location scan), jal ItemObj_Spawn @ 0x5761F4 (BossReward_Update),
  * jal Item_OnPickup @ 0x447A08 (ItemObj_CheckTouch), jal FrameEnd @ 0x439F08 (message box, runs
- * while the world is frozen), jal Ending_Update @ 0x43A958 (GameStateManager state 0xD). */
+ * while the world is frozen), jal Ending_Update @ 0x43A958 (GameStateManager state 0xD).
+ * - Area Keys (stagekeys.c): a hub rock needs its area's key; new key items 0x74-0x78. */
 #include "game.h"
 #include "msgbox.h"
 #include "ap.h"
 #include "ap_locations.h"
+#include "stagekeys.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -543,6 +545,7 @@ void frame_end_hook(void)
         st->hud_off = 0;
         st->deaths = 0;
         st->kill_req = 0;
+        st->area_locks = 0;
         kills_done = 0;
         link_kill = 0;
         was_dead = 0;
@@ -553,6 +556,7 @@ void frame_end_hook(void)
     client_watch();
     goal_tick();
     deathlink_tick();
+    stagekeys_frame();       /* before recv_tick: received area keys need their item records */
     recv_tick();
     msgbox_tick();
 }

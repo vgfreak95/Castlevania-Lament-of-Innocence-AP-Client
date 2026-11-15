@@ -4,14 +4,14 @@ The game runs on a vanilla ISO with runtime pnach patches (src/pickup.c): every 
 the server, and picking up a placed item only reports a location check.
 """
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from BaseClasses import Tutorial
 from worlds.AutoWorld import WebWorld, World
 
 from .data_loader import BASE_ID, GAME_NAME, LOCATIONS
 from .items import (ITEM_GROUPS, ITEM_NAME_TO_ID, LoIItem, create_all_items,
-                    create_item, get_filler_item_name)
+                    create_item, get_filler_item_name, pick_starting_area_keys)
 from .locations import LOCATION_GROUPS, LOCATION_NAME_TO_ID
 from .options import LoIOptions
 from .regions import create_regions
@@ -39,6 +39,7 @@ class LoIWorld(World):
     options_dataclass = LoIOptions
     options: LoIOptions
     topology_present = True
+    starting_area_keys: List[str]   # set in generate_early
 
     item_name_to_id = ITEM_NAME_TO_ID
     location_name_to_id = LOCATION_NAME_TO_ID
@@ -50,6 +51,8 @@ class LoIWorld(World):
             if opt.value:
                 logger.warning(f"{self.player_name}: {opt.display_name} is not implemented yet; ignored.")
                 opt.value = 0
+        # Area Keys: the keys given at the start (the rest go in the pool)
+        self.starting_area_keys = pick_starting_area_keys(self) if self.options.area_keys else []
 
     def create_regions(self) -> None:
         create_regions(self)
@@ -66,7 +69,7 @@ class LoIWorld(World):
     def fill_slot_data(self) -> Dict[str, Any]:
         return {
             "base_id": BASE_ID,
-            **self.options.as_dict("goal", "death_link"),
+            **self.options.as_dict("goal", "death_link", "area_keys"),
         }
 
 
