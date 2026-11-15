@@ -314,12 +314,24 @@ void Prim_SubmitLayer(u8 *obj, int layer);        /* 0x459E20: layer < 0x65, Dra
 /* ---- area map (the pause map's data, loaded at stage load and kept) ----
  * File pointer @ 0xB90974 (disc file id @ 0xB90970): +0 relocated flag (1), +4 piece count,
  * +0x30 piece pointers. Piece (0x60 bytes): +0 stage, +1 room, +2 floor, +8 u16 flags,
- * +0xB size in squares, +0x10 u16 part counts per kind, +0x1A u8[4] fill parts, +0x1E u8[4]
- * outline parts, +0x40 float x, y, z, yaw, +0x50 float scale x, y, z.
- * The pause map model follows the pieces (16-byte aligned, magic 0xFFFFxxxx): +0x20 mesh count,
- * +0x24 offset of the first mesh. Meshes are back to back, u32 byte size first, byte +0x43 =
- * part index; their VIF UNPACK V3-32 blocks (cmd byte 0x68, count = byte 2) hold int32 vertices
- * in area map space: map x = vx / 16, map z = -vz / 16. Leon -> map (pause map marker 0x6C3EB8):
+ * +0xB size in squares, +0x10 u16 part counts per kind (5 kinds), +0x1A u8[4] parts of kind 0,
+ * +0x1E u8[4] parts of kind 1, +0x40 float x, y, z, yaw, +0x50 float scale x, y, z.
+ * Despite the PIECE_FILL / PIECE_OUTLINE names: kind 0 is the room's WALL BAND (a ~20-unit
+ * border with gaps at the doorways) and kind 1 is its solid FLOOR shape (round, L-shaped, ...);
+ * the pause map colours kind 1 red for save rooms. A part can span several meshes.
+ * The pause map model follows the pieces (16-byte aligned, magic 0xFFFFxxxx): +0x08 part matrix
+ * offset, +0x0C matrix count, +0x20 mesh count, +0x24 offset of the first mesh. Meshes are back
+ * to back, u32 byte size first, byte +0x43 = part index. Their VIF stream, from +0x50, is one or
+ * more batches, each self-contained:
+ * - positions: UNPACK V3-32 (cmd byte 0x68, count = byte 2, VU address = low 10 bits) of int32
+ *   vertices, written with STCYCL CL=4 WL=1, so vertex k sits at VU address addr + 4k;
+ *   map x = vx / 16, map z = -vz / 16 (in the room's own frame where the part matrices carry a
+ *   translation, see minimap.c model_parts_local);
+ * - then the index list: UNPACK V4-16 (cmd byte 0x6D) to a higher address, u16 entries = VU
+ *   address of a vertex, bit 15 set = no drawing kick (the first two of each strip). Triangle
+ *   strip: entry k (k >= 2, bit 15 clear) draws entries k-2, k-1, k. Strips are short (wall
+ *   bands are mostly 4-entry quads).
+ * Leon -> map (pause map marker 0x6C3EB8):
  * piece.pos + piece.scale * RotY(piece.yaw) * 0.1 * (x, 0, z). */
 #define MAP_FILE (*(u8 *volatile *)0x00B90974)
 u8 *Map_GetCurrentPiece(void);    /* 0x6C1048: current room's piece for Leon's floor, or 0 */
@@ -339,6 +351,7 @@ u8 *Map_GetCurrentPiece(void);    /* 0x6C1048: current room's piece for Leon's f
 #define MODEL_MESH_OFS   0x24
 #define MESH_PART        0x43
 #define VIF_UNPACK_V3_32 0x68
+#define VIF_UNPACK_V4_16 0x6D      /* the index list */
 
 /* room state table: 12 bytes per room key, bit 0 of the first word = visited */
 #define ROOM_STATE (*(u32 *volatile *)0x00797D40)
