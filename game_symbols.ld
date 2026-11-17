@@ -41,6 +41,7 @@ MsgBox_Close         = 0x006B4A08;
 World_Freeze         = 0x00438908;
 World_Unfreeze       = 0x00438938;
 World_SetPausedBit   = 0x00438620;
+World_SetFreezeBit   = 0x00438670;
 Sound_StopLoops      = 0x00452388;
 Pad_StopVibration    = 0x00403E48;
 GetRoomItemFlag      = 0x006B3B80;

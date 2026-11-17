@@ -78,8 +78,8 @@ and to whom.
 ## Minimap
 
 The optional **Minimap** patch (turn it on in PCSX2 next to Archipelago Pickups) draws a small map
-in a corner of the screen. It shows the rooms you've visited on Leon's current floor, with a dot
-for Leon.
+in a corner of the screen. It shows the rooms you've visited on Leon's current floor, with an arrow
+for Leon pointing the way he faces.
 
 - Room shapes come from the game's own pause map, so rooms look the way they do there.
 - Save rooms are red. Rooms where you've collected every Archipelago pickup turn green. Rooms that

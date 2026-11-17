@@ -41,6 +41,7 @@ hooks = [
     { site = 0x0056AE04, original = 0x0C1ACEE0, function = "room_flag_hook" },     # jal GetRoomItemFlag in PlacedItem_Spawn (location scan)
     { site = 0x005761F4, original = 0x0C112BAC, function = "boss_spawn_stub" },    # jal ItemObj_Spawn in BossReward_Update
     { site = 0x0043A958, original = 0x0C10FC9C, function = "ending_hook" },        # jal Ending_Update in GameStateManager (state 0xD)
+    { site = 0x004544DC, original = 0x0C10E19C, function = "door_prompt_done_hook" }, # jal World_SetFreezeBit(0) when a door prompt is answered: close the box it leaves open
 ]
 
 [patch.minimap]

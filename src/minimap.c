@@ -14,7 +14,7 @@
  * orange marker (ap_locations.h, as "Pickups left").
  * - Room transitions: each room's door records, remembered in map space while
  * Leon is in it.
- * - Leon's dot uses the pause map marker's formula (0x6C3EB8).
+ * - Leon's arrow uses the pause map marker's formula and turn (0x6C3EB8).
  * - Drawing: untextured type 4 sprites (game.h "2D primitives"); shapes are
  * filled from ROW_H-pixel rows, since the 4-vertex primitives don't work as a
  * plain object. Identical consecutive rows are merged into one sprite, so
@@ -37,7 +37,12 @@
 #define MAX_SPANS 8 /* separate spans per row of one shape */
 #define SPAN_EPS                                                               \
   0.5f /* rows whose span ends differ less than this merge into one sprite */
-#define DOT_R 2.0f
+#define ARROW_TIP 5.0f  /* Leon's arrow: centre to tip, */
+#define ARROW_BACK 3.0f /* centre to the back edge, */
+#define ARROW_W 3.5f    /* half the back edge */
+#define ARROW_ROWS 12   /* sprites it can take (1-pixel rows) */
+#define LEON_FWD_Z                                                             \
+  1.0f /* Leon faces world (sin yaw, cos yaw) (checked in game) */
 #define MARK_R 1.5f
 #define DOOR_R 1.5f
 #define SCREEN_W2                                                              \
@@ -57,9 +62,10 @@ static const int clear_rgba[2][4] = {{0x20, 0x60, 0x28, 0x60},
                                      {0x48, 0x80, 0x50, 0x70}};
 static const int wall_rgba[2][4] = {{0x60, 0x70, 0x80, 0x70},
                                     {0x80, 0x80, 0x80, 0x80}};
-static const int dot_rgba[4] = {0x80, 0x80, 0x30, 0x80};
+static const int dot_rgba[4] = {0x80, 0x10, 0x10, 0x80}; /* Leon: red */
 static const int mark_rgba[4] = {0x80, 0x50, 0x10, 0x80};
-static const int door_rgba[4] = {0x80, 0x80, 0x80, 0x80};
+static const int door_rgba[4] = {0x80, 0x78, 0x10, 0x80}; /* yellow */
+static const int door_edge_rgba[4] = {0x00, 0x00, 0x00, 0x80}; /* its border */
 
 static const TextStyle text_style = {8, 0x80808080, 0, 0x100, 0x100, 0};
 
@@ -144,7 +150,7 @@ static u8 *frame_regs; /* this pass's shared GS register list */
 static int sprites_left;
 static int sprite_floor; /* draw_rect stops at this many left (kept for doors
                             and dot) */
-#define SPRITE_RESERVE 40
+#define SPRITE_RESERVE 60 /* 2 per door (border + fill), plus the arrow */
 
 static int gs_xy(float v) { return (int)((v + 2048.0f) * 16.0f); }
 
@@ -815,6 +821,61 @@ static int piece_tris(const RoomBox *b, int kind, float cx, float cz) {
   return n;
 }
 
+/* Leon's arrow at the panel centre, pointing his way on the map: his facing
+ * through the room's world -> map turn, as the pause map arrow (yaw + room
+ * yaw). Filled from 1-pixel rows; a plain dot when the model is missing. */
+static void draw_leon(const u8 *here) {
+  const u8 *model = PLAYER_MODEL;
+  const float *scale = (const float *)(here + PIECE_SCALE);
+  float yaw, c, s, fx, fz, dx, dy, len, t[6], y, ymin, ymax;
+  int i;
+
+  if (!model) {
+    draw_rect(panel_cx - 2.0f, panel_cy - 2.0f, panel_cx + 2.0f,
+              panel_cy + 2.0f, dot_rgba);
+    return;
+  }
+  yaw = ((const float *)(model + MODEL_ROT))[1];
+  c = cos_approx(((const float *)(here + PIECE_POS))[3]);
+  s = sin_approx(((const float *)(here + PIECE_POS))[3]);
+  fx = sin_approx(yaw);
+  fz = LEON_FWD_Z * cos_approx(yaw);
+  /* world direction -> map (world_to_map's linear part) -> screen (y down) */
+  dx = scale[0] * (c * fx + s * fz);
+  dy = -scale[2] * (-s * fx + c * fz);
+  len = dx * dx + dy * dy;
+  if (len < 1e-6f)
+    return;
+  /* 1/sqrt(len) by Newton steps from 1 (len is near 1 unless the room is
+   * scaled) */
+  {
+    float r = 1.0f;
+    for (i = 0; i < 4; i++)
+      r = r * (1.5f - 0.5f * len * r * r);
+    dx *= r;
+    dy *= r;
+  }
+  t[0] = panel_cx + dx * ARROW_TIP;
+  t[1] = panel_cy + dy * ARROW_TIP;
+  t[2] = panel_cx - dx * ARROW_BACK - dy * ARROW_W;
+  t[3] = panel_cy - dy * ARROW_BACK + dx * ARROW_W;
+  t[4] = panel_cx - dx * ARROW_BACK + dy * ARROW_W;
+  t[5] = panel_cy - dy * ARROW_BACK - dx * ARROW_W;
+  ymin = ymax = t[1];
+  for (i = 1; i < 3; i++) {
+    if (t[i * 2 + 1] < ymin)
+      ymin = t[i * 2 + 1];
+    if (t[i * 2 + 1] > ymax)
+      ymax = t[i * 2 + 1];
+  }
+  for (y = ymin; y < ymax; y += 1.0f) {
+    float lo, hi;
+
+    if (tri_band(t, y, y + 1.0f, &lo, &hi))
+      draw_rect(lo, y, hi < lo + 1.0f ? lo + 1.0f : hi, y + 1.0f, dot_rgba);
+  }
+}
+
 /* draws the minimap; `preview` = called from the menu (world frozen by us) */
 static void minimap_draw(int preview) {
   u8 *file = MAP_FILE, *here;
@@ -839,7 +900,7 @@ static void minimap_draw(int preview) {
   floor = (signed char)here[PIECE_FLOOR];
   draw_rect(panel_x0, panel_y0, panel_x1, panel_y1, panel_rgba);
 
-  /* rooms leave SPRITE_RESERVE sprites for the doors and Leon's dot; Leon's
+  /* rooms leave SPRITE_RESERVE sprites for the doors and Leon's arrow; Leon's
    * room goes first */
   sprite_floor = SPRITE_RESERVE;
   for (i = 0; i < box_count; i++)
@@ -848,7 +909,7 @@ static void minimap_draw(int preview) {
   for (i = 0; i < box_count; i++)
     if (boxes[i].piece != here)
       draw_room(&boxes[i], 0, floor, cx, cz);
-  sprite_floor = 0;
+  sprite_floor = ARROW_ROWS; /* the doors leave the arrow's */
 
   /* room transitions, on top of the rooms (overlaps between neighbours are fine
    * for now) */
@@ -869,11 +930,14 @@ static void minimap_draw(int preview) {
       if (d->floor != floor)
         continue;
       map_to_screen(d->x, d->z, cx, cz, &sx, &sy);
+      /* a dark border keeps the mark visible on the pale walls */
+      draw_rect(sx - DOOR_R - 1.0f, sy - DOOR_R - 1.0f, sx + DOOR_R + 1.0f,
+                sy + DOOR_R + 1.0f, door_edge_rgba);
       draw_rect(sx - DOOR_R, sy - DOOR_R, sx + DOOR_R, sy + DOOR_R, door_rgba);
     }
   }
-  draw_rect(panel_cx - DOT_R, panel_cy - DOT_R, panel_cx + DOT_R,
-            panel_cy + DOT_R, dot_rgba);
+  sprite_floor = 0;
+  draw_leon(here);
 }
 
 /* ---- L3 and the settings menu ---- */

@@ -12,7 +12,8 @@
  * Hooks: jal ItemObj_Spawn @ 0x56AE8C (PlacedItem_Spawn), jal GetRoomItemFlag @ 0x56AE04
  * (PlacedItem_Spawn, for the location scan), jal ItemObj_Spawn @ 0x5761F4 (BossReward_Update),
  * jal Item_OnPickup @ 0x447A08 (ItemObj_CheckTouch), jal FrameEnd @ 0x439F08 (message box, runs
- * while the world is frozen), jal Ending_Update @ 0x43A958 (GameStateManager state 0xD).
+ * while the world is frozen), jal Ending_Update @ 0x43A958 (GameStateManager state 0xD), jal
+ * World_SetFreezeBit @ 0x4544DC (door prompt answered: msgbox.c closes the box it leaves open).
  * - Area Keys (stagekeys.c): a hub rock needs its area's key; new key items 0x74-0x78. */
 #include "game.h"
 #include "msgbox.h"

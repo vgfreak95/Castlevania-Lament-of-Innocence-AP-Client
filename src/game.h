@@ -141,6 +141,11 @@ void Player_SetFlag(int player, int mask, int on);
  * Player structs @ 0xB632C0, 0x1500 bytes each; position at +0x170 (GetPlayerPos 0x460CE8).
  * World Y points down: up is negative. */
 #define PLAYER_POS ((volatile float *)0x00B63430)
+/* Player struct +0x00: the model; its rotation (float x, y, z) is at model +0xD0 (GetPlayerRot
+ * 0x460BF8 -> 0x440D90; SetRot 0x440DB0). Y is the yaw; the pause map arrow (0x6C3EB8) turns
+ * by yaw + the room's yaw. */
+#define PLAYER_MODEL (*(u8 *volatile *)0x00B632C0)
+#define MODEL_ROT 0xD0
 #define PLAYER_CENTRE_RAISE 240.0f   /* ItemObj_Update measures item distance from here */
 
 /* 0x460C90: sets player `player`'s position (+0x170 and +0x180) and moves the model root
@@ -257,6 +262,7 @@ void MsgBox_Close(u8 *box);                               /* 0x6B4A08 */
 void World_Freeze(int arg);           /* 0x438908: freeze enemies/objects (game passes 0) */
 void World_Unfreeze(void);            /* 0x438938 */
 void World_SetPausedBit(int on);      /* 0x438620: bit 0 of 0xB36750 */
+void World_SetFreezeBit(int on);      /* 0x438670: one of World_Freeze's bits (0x60) of 0xB36750 */
 void Sound_StopLoops(void);           /* 0x452388 */
 void Pad_StopVibration(int a, int port); /* 0x403E48: game calls (0, -1); unconfirmed */
 
