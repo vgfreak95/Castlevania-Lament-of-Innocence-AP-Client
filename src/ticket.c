@@ -52,7 +52,8 @@
 #define TEXT_DESC 0x7E01
 
 static const char ticket_name[] = "Savewarp Ticket";
-static const char ticket_desc[] = "Use in a save room to warp to another one you have visited.";
+/* one line is too long for the shop's description box: break after "one" so nothing is cut off */
+static const char ticket_desc[] = "Use in a save room to warp to another one\nyou have visited.";
 
 /* state lives in .bss, which the pnach never writes */
 static u8 *ticket_obj;          /* effect object of the custom ticket in use, 0 = none */
