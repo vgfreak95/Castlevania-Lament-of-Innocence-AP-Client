@@ -75,9 +75,10 @@ bosses defeated, the Dragon Crest and the Vampire Killer.
 The pickup still looks like its vanilla item. Picking it up shows a message box with what was sent
 and to whom.
 
-## Minimap
+## Archipelago Menu and Minimap
 
-The optional **Minimap** patch (turn it on in PCSX2 next to Archipelago Pickups) draws a small map
+The optional **Archipelago Menu and Minimap** patch (turn it on in PCSX2 next to Archipelago
+Pickups) draws a small map
 in a corner of the screen. It shows the rooms you've visited on Leon's current floor, with an arrow
 for Leon pointing the way he faces.
 
@@ -85,11 +86,19 @@ for Leon pointing the way he faces.
 - Save rooms are red. Rooms where you've collected every Archipelago pickup turn green. Rooms that
   still have unchecked pickups get an orange marker.
 - Room transitions (the doorways to other rooms) appear once you've been in a room.
-- Tap **L3** to show or hide it. Hold **L3** for about 3 seconds to open its settings (long
-  enough that it doesn't open by accident in combat). The game pauses while the settings are
-  open.
+- Tap **L3** to show or hide it.
 
-| Setting | Choices |
+Hold **L3** for about 3 seconds to open the **Archipelago Menu** (long enough that it doesn't open
+by accident in combat). The game pauses while it is open. Up/Down select, Cross opens a page or
+confirms, Left/Right change a setting, Triangle or Circle goes back (and closes the menu from its
+first page), and tapping L3 closes it.
+
+- **Minimap Options**: the minimap settings below.
+- **Savewarps**: warp to any save room you've already been in, listed by area (for example
+  "HoSR: Save 1", numbered in room order). You arrive at the room's first doorway. The list comes
+  from the game's own visited-room record, so it is kept in your save.
+
+| Minimap setting | Choices |
 |---------|---------|
 | Zoom | how much of the floor fits on the map |
 | Size | Small, Medium, Large |

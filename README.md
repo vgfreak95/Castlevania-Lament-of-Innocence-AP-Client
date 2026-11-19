@@ -29,10 +29,12 @@ Double-click `lament_of_innocence.apworld`, or copy it into Archipelago's `custo
    `Documents\PCSX2\patches`. To find it, use **Tools > Open Data Directory** in PCSX2.
 2. In PCSX2, right-click the game in your library, open **Properties > Patches** and turn on
    **Archipelago Pickups**.
-3. Optional: turn on **Minimap** for a small map of the rooms you've visited in the top-right
-   corner. Rooms that still have unchecked Archipelago pickups get an orange marker. Tap **L3** to
-   show or hide it; hold **L3** for about 3 seconds to open its settings (zoom, size, corner,
-   opacity, room shapes and which markers to show). Settings last until you reset the console.
+3. Optional: turn on **Archipelago Menu and Minimap** for a small map of the rooms you've visited
+   in the top-right corner. Rooms that still have unchecked Archipelago pickups get an orange
+   marker. Tap **L3** to show or hide it; hold **L3** for about 3 seconds to open the Archipelago
+   Menu: **Minimap Options** (zoom, size, corner, opacity, room shapes and which markers to show)
+   and **Savewarps** (warp to any save room you've been in). Minimap settings last until you reset
+   the console.
 
 ### 3. Turn on PINE in PCSX2
 

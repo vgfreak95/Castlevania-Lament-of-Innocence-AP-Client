@@ -45,13 +45,26 @@ hooks = [
 ]
 
 [patch.minimap]
-title = "Minimap"
-description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups."
+title = "Archipelago Menu and Minimap"
+description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups. Tap L3 to show/hide it; hold L3 for the Archipelago Menu (Minimap Options, Savewarps to visited save rooms). Rinaldo's shop sells the Savewarp Ticket (2000 gold, one per game, reusable in save rooms)."
 base = 0x000E0000
-sources = ["src/minimap.c"]
+sources = ["src/minimap.c", "src/apmenu.c", "src/savewarps.c", "src/ticket.c"]
 hooks = [
     { site = 0x00439EC8, original = 0x0C11820A, function = "minimap_hook" },       # jal Player_UpdateStep in GameplayFrame case 0 (skipped while frozen)
-    { site = 0x00439F00, original = 0x0C1109CC, function = "minimap_input_hook" }, # jal Obj_UpdateAll in GameplayFrame case 0 (runs while frozen): R3, settings menu
+    { site = 0x00439F00, original = 0x0C1109CC, function = "apmenu_hook" },        # jal Obj_UpdateAll in GameplayFrame case 0 (runs while frozen): L3, Archipelago Menu
+    # Savewarp Ticket (src/ticket.c)
+    { site = 0x0044BA48, original = 0x081154B0, function = "item_text_hook", jump = true },  # j GetText in Item_GetNameText
+    { site = 0x0044BAB4, original = 0x081154B0, function = "item_text_hook", jump = true },  # j GetText in Item_GetDescText
+    { site = 0x0044BB74, original = 0x081154B0, function = "item_text_hook", jump = true },  # j GetText in the short item description
+    { site = 0x0046E0F8, original = 0x0C11C694, function = "ticket_use_hook" },     # jal ItemUse_Spawn in the item ring
+    { site = 0x0047436C, original = 0x0C114E7C, function = "ticket_warp_stub" },    # jal RequestRoomChange in the ticket effect (to 4/3)
+    { site = 0x004743A4, original = 0x0C114E7C, function = "ticket_warp_stub" },    # (to the Memorial Ticket's point)
+    { site = 0x004743BC, original = 0x0C11A438, function = "ticket_remove_stub" },  # jal Inv_RemoveItem(ticket, 1)
+    { site = 0x00439EF0, original = 0x0C1153F8, function = "ticket_frame_hook" },   # jal 0x454FE0 in GameplayFrame case 0 (runs while frozen): item record, save room picker
+    { site = 0x00445F00, original = 0x0C11154A, function = "text_code_hook" },      # jal Text_ParseCode in text layout (red ticket icon)
+    { site = 0x00443C9C, original = 0x0C11154A, function = "text_code_hook" },      # (glyph drawer)
+    { site = 0x00444D7C, original = 0x0C11154A, function = "text_code_hook" },      # (second glyph drawer)
+    { site = 0x004451E4, original = 0x0C11154A, function = "text_code_hook" },      # (text measuring)
 ]
 
 # ---- pnach files ----
