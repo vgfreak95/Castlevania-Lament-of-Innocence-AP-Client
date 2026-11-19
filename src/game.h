@@ -242,6 +242,12 @@ int GetActiveOrb(void);                /* 0x468AF8 */
  * everything up to 0x439EF0 */
 int IsWorldFrozen(void);
 
+/* quick item ring (state machine 0x6BE4C8): 0 = closed (zeroed at setup, 0x6BEEE0),
+ * 3 = opening, 1 = open, 4/5 = closing, 6/7 = changing page. The world keeps running while it is
+ * open (not frozen). */
+#define ITEM_RING_STATE (*(volatile int *)0x00B90950)
+#define ITEM_RING_OPEN() (ITEM_RING_STATE != 0)
+
 /* the game's sprintf @ 0x410410 (named to avoid clashing with the C library builtin) */
 int GameSprintf(char *dst, const char *fmt, ...);
 /* Both only read the arguments passed in registers (a0-a7) correctly: at most 7 values after the

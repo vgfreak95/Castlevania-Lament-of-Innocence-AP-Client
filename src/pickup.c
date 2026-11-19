@@ -503,8 +503,9 @@ static void deathlink_tick(void)
 
 /* ---- pickups left in this room ----
  * Bottom-right text: AP pickup locations (ap_locations.h) in the current room whose collected flag
- * isn't set yet. Hidden while the world is frozen (events, message boxes) and when the debug
- * menu's Info HUD page switches it off (AP_STATUS->hud_off). */
+ * isn't set yet. Hidden while the world is frozen (events, message boxes), while the quick item
+ * ring is open (it doesn't freeze the world, so that needs its own check) and when the debug menu's
+ * Info HUD page switches it off (AP_STATUS->hud_off). */
 #define LEFT_X       70         /* screen-centre relative, like the debug menu's info HUD */
 #define LEFT_Y       185
 #define LEFT_LAYER   1
@@ -517,7 +518,7 @@ static void pickups_left_draw(void)
     int room_key, i, left = 0;
     char text[32];
 
-    if (AP_STATUS->hud_off || IsWorldFrozen())
+    if (AP_STATUS->hud_off || IsWorldFrozen() || ITEM_RING_OPEN())
         return;
     room_key = GetRoomKey(CUR_STAGE, CUR_ROOM);
     for (i = 0; i < AP_PICKUP_COUNT; i++) {
