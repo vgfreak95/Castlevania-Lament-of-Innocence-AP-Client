@@ -38,6 +38,29 @@ STATUS_CLIENT_TICKS = STATUS + 16
 STATUS_KILL_REQ = STATUS + 28
 STATUS_AREA_LOCKS = STATUS + 32     # bit i = area i (items.py AREA_KEYS) needs its key
 STATUS_SKILL_VANILLA = STATUS + 36  # skills (src/skills.h bits) still learned the normal way
+
+# Progressive items (items.py PROGRESSIVE), by their items.json game_id: the nth one received
+# becomes the nth tier's game item ID (any beyond the last tier repeat the last).
+PROGRESSIVE_TIERS: Dict[int, List[int]] = {
+    768: [0x17, 0x18],              # Progressive Brooch: Heart Brooch, Mobius's Brooch
+    769: [0x06, 0x07, 0x08, 0x09],  # Progressive Plate: Earth, Meteor, Moonlight, Solar Plate
+}
+
+
+def resolve_progressive(game_ids: Sequence[int]) -> List[int]:
+    """Game item IDs as received (server order), with each progressive item replaced by its
+    tier. Depends only on the order, so every resend of the list gives the same items."""
+    seen: Dict[int, int] = {}
+    out = []
+    for gid in game_ids:
+        tiers = PROGRESSIVE_TIERS.get(gid)
+        if tiers is None:
+            out.append(gid)
+            continue
+        n = seen.get(gid, 0)
+        seen[gid] = n + 1
+        out.append(tiers[min(n, len(tiers) - 1)])
+    return out
 GOAL_WALTER, GOAL_DEATH = 0x1, 0x2
 
 # ---- message queue (msgbox.h) ----

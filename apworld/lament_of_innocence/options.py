@@ -59,6 +59,18 @@ class BasicSkills(Choice):
     default = 0
 
 
+class ProgressiveBrooch(Toggle):
+    """Replaces Heart Brooch and Mobius's Brooch with two Progressive Brooches: the first one you
+    receive is the Heart Brooch, the second Mobius's Brooch."""
+    display_name = "Progressive Brooch"
+
+
+class ProgressivePlates(Toggle):
+    """Replaces the four plates with four Progressive Plates, received in order: Earth Plate,
+    Meteor Plate, Moonlight Plate, Solar Plate."""
+    display_name = "Progressive Plates"
+
+
 class TorchSanity(Toggle):
     """NOT IMPLEMENTED YET: add sub-weapon torches and candles as locations. Ignored for now."""
     display_name = "Torch Sanity (not implemented)"
@@ -86,5 +98,7 @@ class LoIOptions(PerGameCommonOptions):
     starting_area: StartingArea
     starting_area_keys: StartingAreaKeys
     basic_skills: BasicSkills
+    progressive_brooch: ProgressiveBrooch
+    progressive_plates: ProgressivePlates
     torch_sanity: TorchSanity
     enemy_drop_sanity: EnemyDropSanity

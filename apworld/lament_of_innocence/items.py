@@ -40,8 +40,17 @@ BASIC_SKILLS = ("Quick Step", "Perfect Guard")
 # AP_STATUS->skill_vanilla for Basic Skills = vanilla: the bits the game may still learn itself
 BASIC_SKILLS_MASK = sum(1 << SKILLS.index(name) for name in BASIC_SKILLS)
 
+# Progressive items: one per tier, the nth received gives the nth tier. The client maps them to the
+# tiers' game IDs (game_interface.py PROGRESSIVE_TIERS, by game_id), so the game never sees them.
+PROGRESSIVE: Dict[str, List[str]] = {
+    "Progressive Brooch": ["Heart Brooch", "Mobius's Brooch"],
+    "Progressive Plate": ["Earth Plate", "Meteor Plate", "Moonlight Plate", "Solar Plate"],
+}
+
 ITEM_GROUPS: Dict[str, Set[str]] = {
     "Skills": set(SKILLS),
+    "Plates": {"Earth Plate", "Meteor Plate", "Moonlight Plate", "Solar Plate", "Progressive Plate"},
+    "Brooches": {"Heart Brooch", "Mobius's Brooch", "Progressive Brooch"},
     "Area Keys": set(AREA_KEYS.values()),
     "Whips": {"Whip of Flames", "Whip of Ice", "Whip of Lightning", "Vampire Killer"},
     "Keys": {"White Tiger Key", "Blue Dragon Key", "Red Phoenix Key", "Black Turtle Key",
@@ -91,6 +100,10 @@ def create_all_items(world: "LoIWorld") -> None:
     pool: List[LoIItem] = []
     area_keys = set(AREA_KEYS.values())
     basic = world.options.basic_skills
+    progressive = [name for name, on in (("Progressive Brooch", world.options.progressive_brooch),
+                                         ("Progressive Plate", world.options.progressive_plates))
+                   if on]
+    replaced = {tier for name in progressive for tier in PROGRESSIVE[name]}
     start = list(STARTING_ITEMS) + world.starting_area_keys
     if basic == basic.option_start_with:
         start += BASIC_SKILLS
@@ -101,8 +114,12 @@ def create_all_items(world: "LoIWorld") -> None:
             continue                     # Area Keys off: the areas are open, no keys exist
         if rec["name"] in BASIC_SKILLS and basic == basic.option_vanilla:
             continue                     # learned the normal way (AP_STATUS->skill_vanilla)
+        if rec["name"] in replaced:
+            continue                     # comes as a progressive item instead
         for _ in range(rec["count"] - start.count(rec["name"])):
             pool.append(create_item(world, rec["name"]))
+    for name in progressive:
+        pool += [create_item(world, name) for _ in PROGRESSIVE[name]]
     unfilled = len(world.multiworld.get_unfilled_locations(world.player))
     if len(pool) > unfilled:
         raise Exception(f"{GAME_NAME}: {len(pool)} pool items for {unfilled} locations")

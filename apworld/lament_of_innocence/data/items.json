@@ -1174,5 +1174,21 @@
     "classification": "useful",
     "count": 1,
     "filler_weight": 0
+  },
+  {
+    "name": "Progressive Brooch",
+    "game_id": 768,
+    "ap_id": 207330768,
+    "classification": "useful",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Progressive Plate",
+    "game_id": 769,
+    "ap_id": 207330769,
+    "classification": "useful",
+    "count": 0,
+    "filler_weight": 0
   }
 ]

@@ -20,9 +20,12 @@ the way up to Walter.
 - Filler: potions, hearts, money, food.
 - With `area_keys` (on by default): five new area keys, see [Area Keys](#area-keys).
 - The whip skills, see [Whip Skills](#whip-skills).
+- With `progressive_brooch`: two Progressive Brooches instead of Heart Brooch and Mobius's Brooch.
+  The first one you receive is the Heart Brooch, the second Mobius's Brooch.
+- With `progressive_plates`: four Progressive Plates instead of the four plates, received in order:
+  Earth Plate, Meteor Plate, Moonlight Plate, Solar Plate.
 
 The new [Savewarp Ticket](#savewarp-ticket) isn't shuffled: it's only sold in Rinaldo's shop.
-
 ## Area Keys
 
 With `area_keys` on (the default), each of the five areas you reach from the floating rocks in the

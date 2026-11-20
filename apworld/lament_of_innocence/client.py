@@ -19,7 +19,7 @@ from NetUtils import ClientStatus, NetworkItem
 
 from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS
 from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, GameMismatch, GameStatus,
-                             LoIInterface, build_key_map)
+                             LoIInterface, build_key_map, resolve_progressive)
 from .pine import DEFAULT_SLOT, Pine, PineError
 
 POLL_INTERVAL = 0.1           # seconds between game polls (the event ring holds 8 events)
@@ -118,14 +118,16 @@ class LoIContext(CommonContext):
 
     # ---- helpers ----
     def game_items(self) -> List[Tuple[int, str]]:
-        """Every received item as (game item ID, sender name), in server order."""
-        out = []
+        """Every received item as (game item ID, sender name), in server order; progressive items
+        become their tier (game_interface.resolve_progressive)."""
+        ids, senders = [], []
         for net_item in self.items_received:
             game_id = self.ap_to_game_item.get(net_item.item)
             if game_id is None:
                 game_id = net_item.item - BASE_ID   # data says item ap_id = BASE + game id
-            out.append((game_id, self.player_names.get(net_item.player, "Archipelago")))
-        return out
+            ids.append(game_id)
+            senders.append(self.player_names.get(net_item.player, "Archipelago"))
+        return list(zip(resolve_progressive(ids), senders))
 
     def _queue_sent_popup(self, args: dict) -> None:
         """Popup for an item we found for someone else ("Sent X to Y")."""
