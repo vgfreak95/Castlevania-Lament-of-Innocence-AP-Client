@@ -18,8 +18,8 @@ from CommonClient import (ClientCommandProcessor, CommonContext, get_base_parser
 from NetUtils import ClientStatus, NetworkItem
 
 from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS
-from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, GameMismatch, GameStatus,
-                             LoIInterface, build_key_map, resolve_progressive)
+from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, QOL_WOLFS_FOOT, GameMismatch,
+                             GameStatus, LoIInterface, build_key_map, resolve_progressive)
 from .pine import DEFAULT_SLOT, Pine, PineError
 
 POLL_INTERVAL = 0.1           # seconds between game polls (the event ring holds 8 events)
@@ -184,6 +184,8 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
         vanilla = BASIC_SKILLS_MASK \
             if ctx.slot_data.get("basic_skills", BASIC_SKILLS_VANILLA) == BASIC_SKILLS_VANILLA else 0
         await asyncio.to_thread(game.set_skill_vanilla, vanilla)
+        qol = QOL_WOLFS_FOOT if ctx.slot_data.get("wolfs_foot_qol") else 0
+        await asyncio.to_thread(game.set_qol, qol)
         await asyncio.to_thread(game.sync_items, ctx.game_items())
         status = await asyncio.to_thread(game.status)
         if not ctx.goal_sent and ctx.goal_reached(status.goal) and ctx.server:

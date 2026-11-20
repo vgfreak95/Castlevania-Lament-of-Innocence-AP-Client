@@ -21,6 +21,7 @@
 #include "ap_locations.h"
 #include "stagekeys.h"
 #include "skills.h"
+#include "qol.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -556,6 +557,7 @@ void frame_end_hook(void)
         st->kill_req = 0;
         st->area_locks = 0;
         st->skill_vanilla = 0;
+        st->qol = 0;
         kills_done = 0;
         link_kill = 0;
         was_dead = 0;
@@ -566,6 +568,7 @@ void frame_end_hook(void)
     client_watch();
     goal_tick();
     deathlink_tick();
+    qol_frame();
     stagekeys_frame();       /* before recv_tick: received area keys need their item records */
     recv_tick();
     msgbox_tick();

@@ -28,11 +28,13 @@ typedef struct {
                            still learned the normal way (Basic Skills = vanilla); every other one
                            only comes as an item. 0 after a console reset until the client
                            writes it */
+    u32 qol;            /* quality-of-life options, written by the client every poll (qol.h
+                           bits); 0 after a console reset until the client writes it */
 } ApStatus;
 
 #define AP_STATUS ((volatile ApStatus *)0x000FCF00)
 #define AP_STATUS_MAGIC     0x54535041   /* "APST" */
-#define AP_PROTOCOL_VERSION 5
+#define AP_PROTOCOL_VERSION 6
 #define AP_SCAN_ACTIVE      0x4E414353   /* "SCAN" */
 
 #define GOAL_WALTER 0x1     /* Walter beaten: went from his room straight into Death's */

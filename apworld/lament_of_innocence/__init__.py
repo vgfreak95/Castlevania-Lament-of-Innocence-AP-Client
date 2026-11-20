@@ -70,7 +70,7 @@ class LoIWorld(World):
         return {
             "base_id": BASE_ID,
             **self.options.as_dict("goal", "death_link", "area_keys", "basic_skills",
-                                   "progressive_brooch", "progressive_plates"),
+                                   "progressive_brooch", "progressive_plates", "wolfs_foot_qol"),
         }
 
 

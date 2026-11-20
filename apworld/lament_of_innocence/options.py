@@ -71,6 +71,12 @@ class ProgressivePlates(Toggle):
     display_name = "Progressive Plates"
 
 
+class WolfsFootQoL(Toggle):
+    """Wolf's Foot drains MP at half the normal rate (5 MP a second instead of 10), so it lasts
+    twice as long."""
+    display_name = "Wolf's Foot QoL"
+
+
 class TorchSanity(Toggle):
     """NOT IMPLEMENTED YET: add sub-weapon torches and candles as locations. Ignored for now."""
     display_name = "Torch Sanity (not implemented)"
@@ -100,5 +106,6 @@ class LoIOptions(PerGameCommonOptions):
     basic_skills: BasicSkills
     progressive_brooch: ProgressiveBrooch
     progressive_plates: ProgressivePlates
+    wolfs_foot_qol: WolfsFootQoL
     torch_sanity: TorchSanity
     enemy_drop_sanity: EnemyDropSanity

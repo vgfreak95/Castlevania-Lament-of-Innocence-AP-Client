@@ -89,6 +89,12 @@ straight away.
   vanilla skill whose conditions are already met is learned as soon as the client connects).
 - Only the main game mode (Leon) is covered.
 
+## Quality of life
+
+- `wolfs_foot_qol`: Wolf's Foot drains MP at half the normal rate (5 MP a second instead of 10), so
+  it lasts twice as long. The client turns it on every time it connects; after a console reset it
+  drains at the normal rate until the client is connected again.
+
 ## What is the goal?
 
 - `defeat_walter` (default): beat Walter Bernhard.
