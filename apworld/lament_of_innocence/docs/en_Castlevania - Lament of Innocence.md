@@ -26,6 +26,10 @@ the way up to Walter.
   Earth Plate, Meteor Plate, Moonlight Plate, Solar Plate.
 
 The new [Savewarp Ticket](#savewarp-ticket) isn't shuffled: it's only sold in Rinaldo's shop.
+
+Rinaldo no longer sells the items of his that are in the pool: the four plates, Mobius's Brooch and
+the Jade Mask only come from the multiworld. You can still sell them to him.
+
 ## Area Keys
 
 With `area_keys` on (the default), each of the five areas you reach from the floating rocks in the

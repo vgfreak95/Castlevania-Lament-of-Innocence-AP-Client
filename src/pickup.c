@@ -22,6 +22,7 @@
 #include "stagekeys.h"
 #include "skills.h"
 #include "qol.h"
+#include "shop.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -569,6 +570,7 @@ void frame_end_hook(void)
     goal_tick();
     deathlink_tick();
     qol_frame();
+    shop_frame();
     stagekeys_frame();       /* before recv_tick: received area keys need their item records */
     recv_tick();
     msgbox_tick();
