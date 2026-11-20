@@ -26,6 +26,8 @@ POLL_INTERVAL = 0.1           # seconds between game polls (the event ring holds
 RECONNECT_INTERVAL = 2.0
 GOAL_OPTION_WALTER, GOAL_OPTION_DEATH = 0, 1
 ALL_AREA_LOCKS = 0x1F         # the five hub areas (items.py AREA_KEYS), src/stagekeys.h
+BASIC_SKILLS_VANILLA = 0      # options.py BasicSkills.option_vanilla
+BASIC_SKILLS_MASK = 0x5000    # Quick Step | Perfect Guard (items.py BASIC_SKILLS_MASK, src/skills.h)
 
 
 class LoICommandProcessor(ClientCommandProcessor):
@@ -177,6 +179,9 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
         # every poll: the game forgets it on a console reset
         locks = ALL_AREA_LOCKS if ctx.slot_data.get("area_keys") else 0
         await asyncio.to_thread(game.set_area_locks, locks)
+        vanilla = BASIC_SKILLS_MASK \
+            if ctx.slot_data.get("basic_skills", BASIC_SKILLS_VANILLA) == BASIC_SKILLS_VANILLA else 0
+        await asyncio.to_thread(game.set_skill_vanilla, vanilla)
         await asyncio.to_thread(game.sync_items, ctx.game_items())
         status = await asyncio.to_thread(game.status)
         if not ctx.goal_sent and ctx.goal_reached(status.goal) and ctx.server:

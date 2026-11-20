@@ -25,9 +25,9 @@ pnach = "ap"                    # the [pnach.*] that --install copies when none 
 # mailbox at 0xFC000 (src/pickup.c), message queue at 0xFD000 (src/msgbox.h)
 [patch.pickup]
 title = "Archipelago Pickups"
-description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000. Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
+description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000. Whip skills are learned from AP items (Basic Skills option: Quick Step and Perfect Guard can stay vanilla). Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
 base = 0x000F9000
-sources = ["src/pickup.c", "src/msgbox.c", "src/stagekeys.c"]
+sources = ["src/pickup.c", "src/msgbox.c", "src/stagekeys.c", "src/skills.c"]
 hooks = [
     { site = 0x004552C0, original = 0x3C0200B6, function = "gettext_hook", jump = true },  # GetText entry (lui v0, 0xB6): area key names
     { site = 0x0067D28C, original = 0x0C19F36A, function = "warp_rock_hook" },     # jal WarpRock_PlayerOn in the hub rock update (state 2)
@@ -42,6 +42,7 @@ hooks = [
     { site = 0x005761F4, original = 0x0C112BAC, function = "boss_spawn_stub" },    # jal ItemObj_Spawn in BossReward_Update
     { site = 0x0043A958, original = 0x0C10FC9C, function = "ending_hook" },        # jal Ending_Update in GameStateManager (state 0xD)
     { site = 0x004544DC, original = 0x0C10E19C, function = "door_prompt_done_hook" }, # jal World_SetFreezeBit(0) when a door prompt is answered: close the box it leaves open
+    { site = 0x0046F418, original = 0x0C11BD20, function = "skill_check_stub" },   # jal Skill_CheckConditions in the skill unlock loop (src/skills.c)
 ]
 
 [patch.minimap]

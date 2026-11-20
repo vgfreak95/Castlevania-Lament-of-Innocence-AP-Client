@@ -1054,5 +1054,125 @@
     "classification": "filler",
     "count": 0,
     "filler_weight": 0
+  },
+  {
+    "name": "Extension",
+    "game_id": 512,
+    "ap_id": 207330512,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Draw Up",
+    "game_id": 513,
+    "ap_id": 207330513,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Vertical High",
+    "game_id": 514,
+    "ap_id": 207330514,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Rising Shot",
+    "game_id": 515,
+    "ap_id": 207330515,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Fast Rising",
+    "game_id": 516,
+    "ap_id": 207330516,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Spinning Blast",
+    "game_id": 517,
+    "ap_id": 207330517,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Energy Blast",
+    "game_id": 518,
+    "ap_id": 207330518,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Sonic Edge",
+    "game_id": 519,
+    "ap_id": 207330519,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "A Extension 1",
+    "game_id": 520,
+    "ap_id": 207330520,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "A Extension 2",
+    "game_id": 521,
+    "ap_id": 207330521,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Step Attack",
+    "game_id": 522,
+    "ap_id": 207330522,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Falcon Claw",
+    "game_id": 523,
+    "ap_id": 207330523,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Quick Step",
+    "game_id": 524,
+    "ap_id": 207330524,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Quick Step 2",
+    "game_id": 525,
+    "ap_id": 207330525,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
+  },
+  {
+    "name": "Perfect Guard",
+    "game_id": 526,
+    "ap_id": 207330526,
+    "classification": "useful",
+    "count": 1,
+    "filler_weight": 0
   }
 ]

@@ -69,3 +69,4 @@ Model_GetData        = 0x00446C48;
 Tex_Find             = 0x00417950;
 Clut_Upload          = 0x00418ED8;
 Text_ParseCode       = 0x00445528;
+Skill_CheckConditions = 0x0046F480;

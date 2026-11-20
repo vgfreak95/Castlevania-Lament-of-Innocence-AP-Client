@@ -29,7 +29,19 @@ AREA_KEYS: Dict[str, str] = {
     "Theatre": "Ghostly Theatre Key",
 }
 
+# Whip skills, in the game's bit order (src/skills.h: bit i = game_id 512 + i). Never learned from
+# kills in AP; Basic Skills decides Quick Step and Perfect Guard.
+SKILLS: List[str] = [
+    "Extension", "Draw Up", "Vertical High", "Rising Shot", "Fast Rising", "Spinning Blast",
+    "Energy Blast", "Sonic Edge", "A Extension 1", "A Extension 2", "Step Attack", "Falcon Claw",
+    "Quick Step", "Quick Step 2", "Perfect Guard",
+]
+BASIC_SKILLS = ("Quick Step", "Perfect Guard")
+# AP_STATUS->skill_vanilla for Basic Skills = vanilla: the bits the game may still learn itself
+BASIC_SKILLS_MASK = sum(1 << SKILLS.index(name) for name in BASIC_SKILLS)
+
 ITEM_GROUPS: Dict[str, Set[str]] = {
+    "Skills": set(SKILLS),
     "Area Keys": set(AREA_KEYS.values()),
     "Whips": {"Whip of Flames", "Whip of Ice", "Whip of Lightning", "Vampire Killer"},
     "Keys": {"White Tiger Key", "Blue Dragon Key", "Red Phoenix Key", "Black Turtle Key",
@@ -78,12 +90,17 @@ def pick_starting_area_keys(world: "LoIWorld") -> List[str]:
 def create_all_items(world: "LoIWorld") -> None:
     pool: List[LoIItem] = []
     area_keys = set(AREA_KEYS.values())
+    basic = world.options.basic_skills
     start = list(STARTING_ITEMS) + world.starting_area_keys
+    if basic == basic.option_start_with:
+        start += BASIC_SKILLS
     for name in start:
         world.multiworld.push_precollected(create_item(world, name))
     for rec in ITEMS:
         if rec["name"] in area_keys and not world.options.area_keys:
             continue                     # Area Keys off: the areas are open, no keys exist
+        if rec["name"] in BASIC_SKILLS and basic == basic.option_vanilla:
+            continue                     # learned the normal way (AP_STATUS->skill_vanilla)
         for _ in range(rec["count"] - start.count(rec["name"])):
             pool.append(create_item(world, rec["name"]))
     unfilled = len(world.multiworld.get_unfilled_locations(world.player))

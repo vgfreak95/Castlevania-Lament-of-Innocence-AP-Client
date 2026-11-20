@@ -20,6 +20,7 @@
 #include "ap.h"
 #include "ap_locations.h"
 #include "stagekeys.h"
+#include "skills.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -386,6 +387,10 @@ static int give_item(int id)
         SetSubWeapon(id, GetActiveOrb());
         return 0;
     }
+    if (skill_item(id)) {              /* whip skill (skills.h): learn it */
+        skill_give(id);
+        return 0;
+    }
     for (i = 0; i < (int)sizeof(fake_obj); i++)
         fake_obj[i] = 0;
     *(int *)(fake_obj + ITEMOBJ_ID) = id;
@@ -404,6 +409,7 @@ static void recv_tick(void)
     u32 applied = RECV_APPLIED;
     char sender[sizeof(e->sender)];
     char text[MSGQ_TEXT];
+    const char *name;
     int item, gold, i;
 
     q->applied = applied;              /* tell the client where this save is */
@@ -424,13 +430,14 @@ static void recv_tick(void)
     RECV_APPLIED = applied + 1;
     q->applied = applied + 1;
 
-    GamePrintf("[recv] #%d item %02X %s from %s\n", applied, item, Item_GetNameText(item), sender);
+    name = skill_item(item) ? skill_name(item) : Item_GetNameText(item);
+    GamePrintf("[recv] #%d item %02X %s from %s\n", applied, item, name, sender);
     if (gold) {
         GamePrintf("[recv] inventory full: $%d instead\n", gold);
         GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s\n(no room: $%d instead)",
-                    Item_GetNameText(item), sender, gold);
+                    name, sender, gold);
     } else {
-        GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s", Item_GetNameText(item), sender);
+        GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s", name, sender);
     }
     msg_post(text);
 }
@@ -548,6 +555,7 @@ void frame_end_hook(void)
         st->deaths = 0;
         st->kill_req = 0;
         st->area_locks = 0;
+        st->skill_vanilla = 0;
         kills_done = 0;
         link_kill = 0;
         was_dead = 0;

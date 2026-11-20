@@ -358,6 +358,17 @@ class StatusAndMessageTests(unittest.TestCase):
         self.assertEqual(game.u32(gi.STATUS_AREA_LOCKS), 0x1F)
         self.assertEqual(iface.status().kill_req, 0)             # neighbours untouched
 
+    def test_skill_vanilla(self):
+        game, _, iface, _ = make_session()
+        self.assertEqual(gi.STATUS_SKILL_VANILLA, gi.STATUS + 36)  # ap.h: after area_locks
+        self.assertEqual(gi.STATUS_STRUCT.size, 40)
+        iface.set_skill_vanilla(0x5000)
+        self.assertEqual(game.u32(gi.STATUS_SKILL_VANILLA), 0x5000)
+        game.u32(gi.STATUS_SKILL_VANILLA, 0)                       # console reset clears it
+        iface.set_skill_vanilla(0x5000)
+        self.assertEqual(game.u32(gi.STATUS_SKILL_VANILLA), 0x5000)
+        self.assertEqual(game.u32(gi.STATUS_AREA_LOCKS), 0)        # neighbour untouched
+
     def test_heartbeat_changes(self):
         game, _, iface, _ = make_session()
         iface.heartbeat()

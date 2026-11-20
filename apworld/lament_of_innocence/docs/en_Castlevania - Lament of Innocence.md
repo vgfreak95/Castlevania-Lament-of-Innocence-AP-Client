@@ -19,6 +19,7 @@ the way up to Walter.
 - The HP, Heart and MP Max Ups found in the world.
 - Filler: potions, hearts, money, food.
 - With `area_keys` (on by default): five new area keys, see [Area Keys](#area-keys).
+- The whip skills, see [Whip Skills](#whip-skills).
 
 The new [Savewarp Ticket](#savewarp-ticket) isn't shuffled: it's only sold in Rinaldo's shop.
 
@@ -63,6 +64,27 @@ any other key, and are kept in your save.
 
 With `area_keys` off, the five areas are open from the start, as in the vanilla game, and the area
 keys don't exist.
+
+## Whip Skills
+
+Leon's whip techniques are items. Defeating enemies, guarding and Quick Stepping no longer teach
+them: a skill is learned when its item arrives, with a "Received" message. Its move then works
+straight away.
+
+- In the item pool: Extension, Draw Up, Vertical High, Rising Shot, Fast Rising, Spinning Blast,
+  Energy Blast, Sonic Edge, A Extension 1, A Extension 2, Step Attack, Falcon Claw and Quick
+  Step 2.
+- Quick Step and Perfect Guard, which the game normally teaches almost at once, follow the
+  `basic_skills` option:
+  - `vanilla` (the default): learned the normal way (Quick Step after 3 kills, Perfect Guard after
+    guarding 15 attacks). They aren't in the item pool.
+  - `start_with`: learned from the start.
+  - `shuffle`: in the item pool like the other skills.
+- No location needs a skill yet: they are useful items, not progression.
+- The client tells the game which skills it may still teach every time it connects. Until it is
+  connected after a console reset, no skill is learned the normal way (kills still count, so a
+  vanilla skill whose conditions are already met is learned as soon as the client connects).
+- Only the main game mode (Leon) is covered.
 
 ## What is the goal?
 

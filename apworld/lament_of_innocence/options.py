@@ -45,6 +45,20 @@ class StartingAreaKeys(Range):
     default = 1
 
 
+class BasicSkills(Choice):
+    """Quick Step and Perfect Guard, the two whip skills Leon normally learns almost at once (Quick
+    Step after 3 kills, Perfect Guard after guarding 15 attacks). The other 13 skills are always
+    in the item pool and are never learned from kills.
+    vanilla: learned the normal way, not in the item pool.
+    start_with: learned from the start.
+    shuffle: in the item pool like the other skills."""
+    display_name = "Basic Skills"
+    option_vanilla = 0
+    option_start_with = 1
+    option_shuffle = 2
+    default = 0
+
+
 class TorchSanity(Toggle):
     """NOT IMPLEMENTED YET: add sub-weapon torches and candles as locations. Ignored for now."""
     display_name = "Torch Sanity (not implemented)"
@@ -71,5 +85,6 @@ class LoIOptions(PerGameCommonOptions):
     area_keys: AreaKeys
     starting_area: StartingArea
     starting_area_keys: StartingAreaKeys
+    basic_skills: BasicSkills
     torch_sanity: TorchSanity
     enemy_drop_sanity: EnemyDropSanity
