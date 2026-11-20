@@ -42,7 +42,7 @@ typedef struct ApPage {
 } ApPage;
 
 /* AP_PAGE(name, order) = { ... };  registers a page. `order` (three digits) sets its place on
- * the main page, lowest first: 010 Minimap Options, 020 Savewarps. Uses the .submenus.* sections
+ * the main page, lowest first: 010 Minimap Options. Uses the .submenus.* sections
  * that game.ld collects. */
 #define AP_PAGE(name, order)                                                              \
     static const ApPage name;                                                             \

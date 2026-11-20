@@ -32,9 +32,10 @@ Double-click `lament_of_innocence.apworld`, or copy it into Archipelago's `custo
 3. Optional: turn on **Archipelago Menu and Minimap** for a small map of the rooms you've visited
    in the top-right corner. Rooms that still have unchecked Archipelago pickups get an orange
    marker. Tap **L3** to show or hide it; hold **L3** for about 3 seconds to open the Archipelago
-   Menu: **Minimap Options** (zoom, size, corner, opacity, room shapes and which markers to show)
-   and **Savewarps** (warp to any save room you've been in). Minimap settings last until you reset
-   the console.
+   Menu's **Minimap Options** (zoom, size, corner, opacity, room shapes and which markers to
+   show). Minimap settings last until you reset the console. This patch also adds the **Savewarp
+   Ticket** to Rinaldo's shop (2000 gold, one per game): use it in a save room to warp to any save
+   room you've been in. It's never used up.
 
 ### 3. Turn on PINE in PCSX2
 

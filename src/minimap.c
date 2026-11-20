@@ -384,7 +384,12 @@ typedef struct {
 
 static RoomBox boxes[MAX_PIECES];
 static int box_count;
+/* The cache is keyed on the file's address AND its disc file ID: a new area's map can load at
+ * the old one's address (a Savewarp Ticket warp to another area), so the address alone would keep
+ * the old area's boxes and meshes (black minimap, only Leon's arrow). */
+#define MAP_FILE_ID (*(volatile int *)0x00B90970)
 static u8 *cached_file;
+static int cached_id;
 static u8 part_owner[256];
 static u8 *part_mesh[256];  /* first mesh of each part; a part's meshes are
                                consecutive */
@@ -457,7 +462,7 @@ static void build_cache(u8 *file) {
   u8 *model, *mesh;
   int i, k, n, local, prev_part = -1;
 
-  cached_file = file;
+  cached_file = 0; /* set once built: a file still loading is tried again */
   box_count = 0;
   cached_local = 0;
   for (i = 0; i < 256; i++) {
@@ -467,6 +472,8 @@ static void build_cache(u8 *file) {
   }
   if (!file || *(int *)file != 1)
     return;
+  cached_file = file;
+  cached_id = MAP_FILE_ID;
   n = *(int *)(file + 4);
   if (n > MAX_PIECES)
     n = MAX_PIECES;
@@ -529,8 +536,7 @@ static void build_cache(u8 *file) {
     }
     mesh += size;
   }
-  GamePrintf("[minimap] map file %d: %d pieces cached%s\n",
-             *(volatile int *)0x00B90970, box_count,
+  GamePrintf("[minimap] map file %d: %d pieces cached%s\n", cached_id, box_count,
              local ? " (room-local meshes)" : "");
 }
 
@@ -880,7 +886,7 @@ static void minimap_draw(int preview) {
   settings_init();
   if (!file || (!preview && (set_hidden || apmenu_game_busy())))
     return;
-  if (file != cached_file)
+  if (file != cached_file || MAP_FILE_ID != cached_id)
     build_cache(file);
   here = Map_GetCurrentPiece();
   if (!here || !box_count)

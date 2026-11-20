@@ -20,6 +20,8 @@ the way up to Walter.
 - Filler: potions, hearts, money, food.
 - With `area_keys` (on by default): five new area keys, see [Area Keys](#area-keys).
 
+The new [Savewarp Ticket](#savewarp-ticket) isn't shuffled: it's only sold in Rinaldo's shop.
+
 ## Area Keys
 
 With `area_keys` on (the default), each of the five areas you reach from the floating rocks in the
@@ -94,9 +96,6 @@ confirms, Left/Right change a setting, Triangle or Circle goes back (and closes 
 first page), and tapping L3 closes it.
 
 - **Minimap Options**: the minimap settings below.
-- **Savewarps**: warp to any save room you've already been in, listed by area (for example
-  "HoSR: Save 1", numbered in room order). You arrive at the room's first doorway. The list comes
-  from the game's own visited-room record, so it is kept in your save.
 
 | Minimap setting | Choices |
 |---------|---------|
@@ -110,6 +109,25 @@ first page), and tapping L3 closes it.
 | Cleared rooms green | colour rooms green once their pickups are all checked |
 
 Settings last until you reset the console.
+
+## Savewarp Ticket
+
+The **Archipelago Menu and Minimap** patch also adds a new item, the **Savewarp Ticket**: a red
+Memorial Ticket that warps you between save rooms.
+
+- **Where to get it**: buy it from Rinaldo's shop (Items tab) for 2000 gold. It isn't in the
+  Archipelago item pool, so it never turns up as a pickup or from another world. You can only buy
+  one: once you have it, it leaves the shop's list. It can't be sold.
+- **Using it**: use it from the quick item menu while you're standing in a save room. A list of
+  every save room you've already been in opens, named the way the save file list names them (for
+  example "House of Sacred Remains 1F"). Rooms that share a name get a number ("Garden Forgotten
+  By Time 1F 2"), and "(here)" marks the one you're in. Up/Down select, Cross warps, Triangle or Circle
+  cancels. The game pauses while the list is open.
+- **The warp**: the ticket plays the Memorial Ticket's animation, then you arrive at the chosen
+  room's first doorway.
+- **It's never used up**: keep it and use it as often as you like.
+- Outside a save room the ticket does nothing, and a message says it only works in a save room.
+- The list comes from the game's own visited-room record, so it is kept in your save.
 
 ## Not implemented yet
 

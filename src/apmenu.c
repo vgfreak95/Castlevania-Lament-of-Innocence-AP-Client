@@ -116,7 +116,7 @@ static void draw_menu(void)
     scroll_to_selected(rows);
     shown = rows < VISIBLE_ROWS ? rows : VISIBLE_ROWS;
 
-    /* a page that scrolls says which rows are showing: "Savewarps  1-14 of 19" */
+    /* a page that scrolls says which rows are showing: "Title  1-14 of 19" */
     if (rows > VISIBLE_ROWS)
         GameSprintf(line, "%s  %d-%d of %d", title, top + 1, top + shown, rows);
     else

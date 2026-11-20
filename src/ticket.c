@@ -249,8 +249,8 @@ char *item_text_hook(int text_id)
  * skip, so it runs while the world is frozen. Input comes from the game's pad block, as the
  * Archipelago Menu does. While it is open the world's paused bit is set, so the Archipelago Menu
  * doesn't open over it (apmenu_game_busy).
- * Save rooms: the Savewarps page's list (savewarps.h); the warp arrives at the room's first
- * entrance, as a door does. */
+ * Save rooms: the list in savewarps.h. The warp arrives at entrance 0 of the room's own object
+ * list, as its corridor door does, so the exit leads back to that corridor (savewarps.c). */
 #define SHOWN_MAX 32    /* >= save_room_count */
 
 enum { PICKER_CLOSED, PICKER_PENDING, PICKER_OPEN };
@@ -352,8 +352,11 @@ static void picker_draw(void)
             GameSprintf(text, "  No save rooms visited yet");
         } else {
             const SaveRoom *s = &save_rooms[shown[row]];
-            GameSprintf(text, "%s%s: Save %d%s", row == picker_sel ? "> " : "  ", s->area,
-                        s->number, save_room_here(s) ? " (here)" : "");
+            char name[SAVE_LABEL_MAX];
+
+            save_room_label(s, name);
+            GameSprintf(text, "%s%s%s", row == picker_sel ? "> " : "  ", name,
+                        save_room_here(s) ? " (here)" : "");
         }
         DrawText(text, &picker_style, PICKER_X + 4, PICKER_Y + 4 + i * PICKER_LINE,
                  PICKER_LAYER, shown_count && row == picker_sel ? COLOUR_SEL : COLOUR_ITEM);
@@ -454,7 +457,7 @@ static int is_custom(u8 *obj)
 void ticket_warp_hook(int stage, int room, int objlist, int entrance, u8 *obj)
 {
     if (is_custom(obj))
-        RequestRoomChange(dest->stage, dest->room, 0, 0);
+        RequestRoomChange(dest->stage, dest->room, dest->objlist, 0);
     else
         RequestRoomChange(stage, room, objlist, entrance);
 }

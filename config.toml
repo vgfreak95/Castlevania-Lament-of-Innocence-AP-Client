@@ -46,7 +46,7 @@ hooks = [
 
 [patch.minimap]
 title = "Archipelago Menu and Minimap"
-description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups. Tap L3 to show/hide it; hold L3 for the Archipelago Menu (Minimap Options, Savewarps to visited save rooms). Rinaldo's shop sells the Savewarp Ticket (2000 gold, one per game, reusable in save rooms)."
+description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups. Tap L3 to show/hide it; hold L3 for the Archipelago Menu (Minimap Options). Rinaldo's shop sells the Savewarp Ticket (2000 gold, one per game, reusable in save rooms)."
 base = 0x000E0000
 sources = ["src/minimap.c", "src/apmenu.c", "src/savewarps.c", "src/ticket.c"]
 hooks = [
