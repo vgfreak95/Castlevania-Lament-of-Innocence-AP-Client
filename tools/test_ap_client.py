@@ -358,6 +358,33 @@ class StatusAndMessageTests(unittest.TestCase):
         self.assertEqual(game.u32(gi.STATUS_AREA_LOCKS), 0x1F)
         self.assertEqual(iface.status().kill_req, 0)             # neighbours untouched
 
+    def test_skill_vanilla(self):
+        game, _, iface, _ = make_session()
+        self.assertEqual(gi.STATUS_SKILL_VANILLA, gi.STATUS + 36)  # ap.h: after area_locks
+        iface.set_skill_vanilla(0x5000)
+        self.assertEqual(game.u32(gi.STATUS_SKILL_VANILLA), 0x5000)
+        game.u32(gi.STATUS_SKILL_VANILLA, 0)                       # console reset clears it
+        iface.set_skill_vanilla(0x5000)
+        self.assertEqual(game.u32(gi.STATUS_SKILL_VANILLA), 0x5000)
+        self.assertEqual(game.u32(gi.STATUS_AREA_LOCKS), 0)        # neighbour untouched
+
+    def test_qol(self):
+        game, _, iface, _ = make_session()
+        self.assertEqual(gi.STATUS_QOL, gi.STATUS + 40)             # ap.h: after skill_vanilla
+        self.assertEqual(gi.STATUS_STRUCT.size, 44)
+        iface.set_qol(gi.QOL_WOLFS_FOOT)
+        self.assertEqual(game.u32(gi.STATUS_QOL), 1)
+        game.u32(gi.STATUS_QOL, 0)                                 # console reset clears it
+        iface.set_qol(gi.QOL_WOLFS_FOOT)
+        self.assertEqual(game.u32(gi.STATUS_QOL), 1)
+        self.assertEqual(game.u32(gi.STATUS_SKILL_VANILLA), 0)     # neighbour untouched
+
+    def test_progressive(self):
+        brooch, plate = 768, 769
+        got = gi.resolve_progressive([plate, 0x2A, brooch, plate, brooch, plate, plate, plate])
+        self.assertEqual(got, [0x06, 0x2A, 0x17, 0x07, 0x18, 0x08, 0x09, 0x09])  # extra = last tier
+        self.assertEqual(gi.resolve_progressive([0x2A, 0xAA]), [0x2A, 0xAA])     # others untouched
+
     def test_heartbeat_changes(self):
         game, _, iface, _ = make_session()
         iface.heartbeat()

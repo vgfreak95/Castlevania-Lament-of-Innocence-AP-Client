@@ -42,4 +42,7 @@ void msgbox_tick(void);
  * paused and no game message box is open (so not mid-save, mid-event or in a menu). */
 int msgbox_game_idle(void);
 
+/* hook @ 0x4544DC: closes the shared box a door prompt leaves open (msgbox.c) */
+void door_prompt_done_hook(int on);
+
 #endif

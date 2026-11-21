@@ -12,13 +12,18 @@
  * Hooks: jal ItemObj_Spawn @ 0x56AE8C (PlacedItem_Spawn), jal GetRoomItemFlag @ 0x56AE04
  * (PlacedItem_Spawn, for the location scan), jal ItemObj_Spawn @ 0x5761F4 (BossReward_Update),
  * jal Item_OnPickup @ 0x447A08 (ItemObj_CheckTouch), jal FrameEnd @ 0x439F08 (message box, runs
- * while the world is frozen), jal Ending_Update @ 0x43A958 (GameStateManager state 0xD).
+ * while the world is frozen), jal Ending_Update @ 0x43A958 (GameStateManager state 0xD), jal
+ * World_SetFreezeBit @ 0x4544DC (door prompt answered: msgbox.c closes the box it leaves open).
  * - Area Keys (stagekeys.c): a hub rock needs its area's key; new key items 0x74-0x78. */
 #include "game.h"
 #include "msgbox.h"
 #include "ap.h"
 #include "ap_locations.h"
 #include "stagekeys.h"
+#include "skills.h"
+#include "qol.h"
+#include "shop.h"
+#include "traps.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -385,6 +390,14 @@ static int give_item(int id)
         SetSubWeapon(id, GetActiveOrb());
         return 0;
     }
+    if (skill_item(id)) {              /* whip skill (skills.h): learn it */
+        skill_give(id);
+        return 0;
+    }
+    if (trap_item(id)) {               /* trap (traps.h): spring it */
+        trap_give(id);
+        return 0;
+    }
     for (i = 0; i < (int)sizeof(fake_obj); i++)
         fake_obj[i] = 0;
     *(int *)(fake_obj + ITEMOBJ_ID) = id;
@@ -403,6 +416,7 @@ static void recv_tick(void)
     u32 applied = RECV_APPLIED;
     char sender[sizeof(e->sender)];
     char text[MSGQ_TEXT];
+    const char *name;
     int item, gold, i;
 
     q->applied = applied;              /* tell the client where this save is */
@@ -423,13 +437,15 @@ static void recv_tick(void)
     RECV_APPLIED = applied + 1;
     q->applied = applied + 1;
 
-    GamePrintf("[recv] #%d item %02X %s from %s\n", applied, item, Item_GetNameText(item), sender);
+    name = skill_item(item) ? skill_name(item)
+         : trap_item(item)  ? trap_name(item) : Item_GetNameText(item);
+    GamePrintf("[recv] #%d item %02X %s from %s\n", applied, item, name, sender);
     if (gold) {
         GamePrintf("[recv] inventory full: $%d instead\n", gold);
         GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s\n(no room: $%d instead)",
-                    Item_GetNameText(item), sender, gold);
+                    name, sender, gold);
     } else {
-        GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s", Item_GetNameText(item), sender);
+        GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s", name, sender);
     }
     msg_post(text);
 }
@@ -502,8 +518,9 @@ static void deathlink_tick(void)
 
 /* ---- pickups left in this room ----
  * Bottom-right text: AP pickup locations (ap_locations.h) in the current room whose collected flag
- * isn't set yet. Hidden while the world is frozen (events, message boxes) and when the debug
- * menu's Info HUD page switches it off (AP_STATUS->hud_off). */
+ * isn't set yet. Hidden while the world is frozen (events, message boxes), while the quick item
+ * ring is open (it doesn't freeze the world, so that needs its own check) and when the debug menu's
+ * Info HUD page switches it off (AP_STATUS->hud_off). */
 #define LEFT_X       70         /* screen-centre relative, like the debug menu's info HUD */
 #define LEFT_Y       185
 #define LEFT_LAYER   1
@@ -516,7 +533,7 @@ static void pickups_left_draw(void)
     int room_key, i, left = 0;
     char text[32];
 
-    if (AP_STATUS->hud_off || IsWorldFrozen())
+    if (AP_STATUS->hud_off || IsWorldFrozen() || ITEM_RING_OPEN())
         return;
     room_key = GetRoomKey(CUR_STAGE, CUR_ROOM);
     for (i = 0; i < AP_PICKUP_COUNT; i++) {
@@ -546,6 +563,8 @@ void frame_end_hook(void)
         st->deaths = 0;
         st->kill_req = 0;
         st->area_locks = 0;
+        st->skill_vanilla = 0;
+        st->qol = 0;
         kills_done = 0;
         link_kill = 0;
         was_dead = 0;
@@ -556,6 +575,8 @@ void frame_end_hook(void)
     client_watch();
     goal_tick();
     deathlink_tick();
+    qol_frame();
+    shop_frame();
     stagekeys_frame();       /* before recv_tick: received area keys need their item records */
     recv_tick();
     msgbox_tick();

@@ -91,3 +91,18 @@ void msgbox_tick(void)
         }
     }
 }
+
+/* Door prompts (0x4542E0: a door's message or yes/no question, run by its trigger box) open the
+ * shared box and freeze the world, but when answered (state 2) only unfreeze: they never call
+ * MsgBox_Close, so the box's open flag stays set after the text is gone. Nothing in the game
+ * minds, but our idle checks (and the minimap's) read the flag, so popups, received items and the
+ * minimap stayed stuck until some other game code closed the box. Replaces the
+ * "jal World_SetFreezeBit" (a0 = 0) in that state @ 0x4544DC: close the box, then unfreeze. */
+void door_prompt_done_hook(int on)
+{
+    u8 *box = MsgBox_Get();
+
+    if (box && *(volatile int *)(box + MSGBOX_OPEN_FLAG))
+        MsgBox_Close(box);
+    World_SetFreezeBit(on);
+}

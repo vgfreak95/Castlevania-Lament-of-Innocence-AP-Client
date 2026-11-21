@@ -25,9 +25,9 @@ pnach = "ap"                    # the [pnach.*] that --install copies when none 
 # mailbox at 0xFC000 (src/pickup.c), message queue at 0xFD000 (src/msgbox.h)
 [patch.pickup]
 title = "Archipelago Pickups"
-description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000. Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
+description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000. Whip skills are learned from AP items (Basic Skills option: Quick Step and Perfect Guard can stay vanilla). Wolf's Foot QoL option: half the MP drain. Rinaldo no longer sells the plates, Mobius's Brooch or the Jade Mask (they're in the item pool). Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
 base = 0x000F9000
-sources = ["src/pickup.c", "src/msgbox.c", "src/stagekeys.c"]
+sources = ["src/pickup.c", "src/msgbox.c", "src/stagekeys.c", "src/skills.c", "src/qol.c", "src/shop.c", "src/traps.c"]
 hooks = [
     { site = 0x004552C0, original = 0x3C0200B6, function = "gettext_hook", jump = true },  # GetText entry (lui v0, 0xB6): area key names
     { site = 0x0067D28C, original = 0x0C19F36A, function = "warp_rock_hook" },     # jal WarpRock_PlayerOn in the hub rock update (state 2)
@@ -41,16 +41,32 @@ hooks = [
     { site = 0x0056AE04, original = 0x0C1ACEE0, function = "room_flag_hook" },     # jal GetRoomItemFlag in PlacedItem_Spawn (location scan)
     { site = 0x005761F4, original = 0x0C112BAC, function = "boss_spawn_stub" },    # jal ItemObj_Spawn in BossReward_Update
     { site = 0x0043A958, original = 0x0C10FC9C, function = "ending_hook" },        # jal Ending_Update in GameStateManager (state 0xD)
+    { site = 0x004544DC, original = 0x0C10E19C, function = "door_prompt_done_hook" }, # jal World_SetFreezeBit(0) when a door prompt is answered: close the box it leaves open
+    { site = 0x0046F418, original = 0x0C11BD20, function = "skill_check_stub" },   # jal Skill_CheckConditions in the skill unlock loop (src/skills.c)
+    { site = 0x00460714, original = 0x0C11908E, function = "knock_hook" },         # jal PlayerHitCheck in the player update (src/traps.c, Knockback Trap)
 ]
 
 [patch.minimap]
-title = "Minimap"
-description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups."
+title = "Archipelago Menu and Minimap"
+description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups. Tap L3 to show/hide it; hold L3 for the Archipelago Menu (Minimap Options). Rinaldo's shop sells the Savewarp Ticket (2000 gold, one per game, reusable in save rooms)."
 base = 0x000E0000
-sources = ["src/minimap.c"]
+sources = ["src/minimap.c", "src/apmenu.c", "src/savewarps.c", "src/ticket.c"]
 hooks = [
     { site = 0x00439EC8, original = 0x0C11820A, function = "minimap_hook" },       # jal Player_UpdateStep in GameplayFrame case 0 (skipped while frozen)
-    { site = 0x00439F00, original = 0x0C1109CC, function = "minimap_input_hook" }, # jal Obj_UpdateAll in GameplayFrame case 0 (runs while frozen): R3, settings menu
+    { site = 0x00439F00, original = 0x0C1109CC, function = "apmenu_hook" },        # jal Obj_UpdateAll in GameplayFrame case 0 (runs while frozen): L3, Archipelago Menu
+    # Savewarp Ticket (src/ticket.c)
+    { site = 0x0044BA48, original = 0x081154B0, function = "item_text_hook", jump = true },  # j GetText in Item_GetNameText
+    { site = 0x0044BAB4, original = 0x081154B0, function = "item_text_hook", jump = true },  # j GetText in Item_GetDescText
+    { site = 0x0044BB74, original = 0x081154B0, function = "item_text_hook", jump = true },  # j GetText in the short item description
+    { site = 0x0046E0F8, original = 0x0C11C694, function = "ticket_use_hook" },     # jal ItemUse_Spawn in the item ring
+    { site = 0x0047436C, original = 0x0C114E7C, function = "ticket_warp_stub" },    # jal RequestRoomChange in the ticket effect (to 4/3)
+    { site = 0x004743A4, original = 0x0C114E7C, function = "ticket_warp_stub" },    # (to the Memorial Ticket's point)
+    { site = 0x004743BC, original = 0x0C11A438, function = "ticket_remove_stub" },  # jal Inv_RemoveItem(ticket, 1)
+    { site = 0x00439EF0, original = 0x0C1153F8, function = "ticket_frame_hook" },   # jal 0x454FE0 in GameplayFrame case 0 (runs while frozen): item record, save room picker
+    { site = 0x00445F00, original = 0x0C11154A, function = "text_code_hook" },      # jal Text_ParseCode in text layout (red ticket icon)
+    { site = 0x00443C9C, original = 0x0C11154A, function = "text_code_hook" },      # (glyph drawer)
+    { site = 0x00444D7C, original = 0x0C11154A, function = "text_code_hook" },      # (second glyph drawer)
+    { site = 0x004451E4, original = 0x0C11154A, function = "text_code_hook" },      # (text measuring)
 ]
 
 # ---- pnach files ----

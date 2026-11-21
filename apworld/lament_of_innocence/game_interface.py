@@ -30,13 +30,39 @@ EV_PICKUP, EV_LOCATION = 0, 1
 # ---- status block (ap.h) ----
 STATUS = 0x000FCF00
 # magic, version, goal, scan, client_ticks, hud_off, deaths (game), kill_req (client),
-# area_locks (client)
-STATUS_STRUCT = struct.Struct("<9I")
+# area_locks (client), skill_vanilla (client), qol (client)
+STATUS_STRUCT = struct.Struct("<11I")
 STATUS_MAGIC = 0x54535041           # "APST"
-PROTOCOL_VERSION = 4
+PROTOCOL_VERSION = 6
 STATUS_CLIENT_TICKS = STATUS + 16
 STATUS_KILL_REQ = STATUS + 28
 STATUS_AREA_LOCKS = STATUS + 32     # bit i = area i (items.py AREA_KEYS) needs its key
+STATUS_SKILL_VANILLA = STATUS + 36  # skills (src/skills.h bits) still learned the normal way
+STATUS_QOL = STATUS + 40            # quality-of-life options (src/qol.h bits)
+QOL_WOLFS_FOOT = 0x1
+
+# Progressive items (items.py PROGRESSIVE), by their items.json game_id: the nth one received
+# becomes the nth tier's game item ID (any beyond the last tier repeat the last).
+PROGRESSIVE_TIERS: Dict[int, List[int]] = {
+    768: [0x17, 0x18],              # Progressive Brooch: Heart Brooch, Mobius's Brooch
+    769: [0x06, 0x07, 0x08, 0x09],  # Progressive Plate: Earth, Meteor, Moonlight, Solar Plate
+}
+
+
+def resolve_progressive(game_ids: Sequence[int]) -> List[int]:
+    """Game item IDs as received (server order), with each progressive item replaced by its
+    tier. Depends only on the order, so every resend of the list gives the same items."""
+    seen: Dict[int, int] = {}
+    out = []
+    for gid in game_ids:
+        tiers = PROGRESSIVE_TIERS.get(gid)
+        if tiers is None:
+            out.append(gid)
+            continue
+        n = seen.get(gid, 0)
+        seen[gid] = n + 1
+        out.append(tiers[min(n, len(tiers) - 1)])
+    return out
 GOAL_WALTER, GOAL_DEATH = 0x1, 0x2
 
 # ---- message queue (msgbox.h) ----
@@ -133,7 +159,7 @@ class LoIInterface:
     # ---- status ----
     def status(self) -> GameStatus:
         raw = self.mem.read(STATUS, STATUS_STRUCT.size)
-        magic, _version, goal, scan, _ticks, _hud, deaths, kill_req, _locks = \
+        magic, _version, goal, scan, _ticks, _hud, deaths, kill_req, _locks, _skills, _qol = \
             STATUS_STRUCT.unpack_from(raw)
         stage, room = struct.unpack("<2H", self.mem.read(CUR_STAGE, 4))
         if magic != STATUS_MAGIC:
@@ -155,6 +181,22 @@ class LoIInterface:
         current, = struct.unpack("<I", self.mem.read(STATUS_AREA_LOCKS, 4))
         if current != mask:
             self.mem.write32(STATUS_AREA_LOCKS, mask)
+
+    # ---- Skills ----
+    def set_skill_vanilla(self, mask: int) -> None:
+        """Which whip skills the game may still learn from kills (src/skills.h bits; the rest only
+        come as items). Written every poll: the game clears it on a console reset."""
+        current, = struct.unpack("<I", self.mem.read(STATUS_SKILL_VANILLA, 4))
+        if current != mask:
+            self.mem.write32(STATUS_SKILL_VANILLA, mask)
+
+    # ---- quality of life ----
+    def set_qol(self, mask: int) -> None:
+        """The quality-of-life options (QOL_* bits). Written every poll: the game clears it on a
+        console reset."""
+        current, = struct.unpack("<I", self.mem.read(STATUS_QOL, 4))
+        if current != mask:
+            self.mem.write32(STATUS_QOL, mask)
 
     def heartbeat(self) -> None:
         """Tells the game a client is polling: it then leaves the "Sent ..." popups to us."""

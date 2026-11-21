@@ -24,11 +24,17 @@ typedef struct {
     u32 area_locks;     /* Area Keys, written by the client every poll: bit i = area i of
                            stagekeys.h needs its key (the hub's rock won't lift without it); 0
                            after a console reset until the client writes it */
+    u32 skill_vanilla;  /* Skills, written by the client every poll: the skills (skills.h bits)
+                           still learned the normal way (Basic Skills = vanilla); every other one
+                           only comes as an item. 0 after a console reset until the client
+                           writes it */
+    u32 qol;            /* quality-of-life options, written by the client every poll (qol.h
+                           bits); 0 after a console reset until the client writes it */
 } ApStatus;
 
 #define AP_STATUS ((volatile ApStatus *)0x000FCF00)
 #define AP_STATUS_MAGIC     0x54535041   /* "APST" */
-#define AP_PROTOCOL_VERSION 4
+#define AP_PROTOCOL_VERSION 6
 #define AP_SCAN_ACTIVE      0x4E414353   /* "SCAN" */
 
 #define GOAL_WALTER 0x1     /* Walter beaten: went from his room straight into Death's */

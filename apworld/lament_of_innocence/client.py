@@ -18,14 +18,16 @@ from CommonClient import (ClientCommandProcessor, CommonContext, get_base_parser
 from NetUtils import ClientStatus, NetworkItem
 
 from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS
-from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, GameMismatch, GameStatus,
-                             LoIInterface, build_key_map)
+from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, QOL_WOLFS_FOOT, GameMismatch,
+                             GameStatus, LoIInterface, build_key_map, resolve_progressive)
 from .pine import DEFAULT_SLOT, Pine, PineError
 
 POLL_INTERVAL = 0.1           # seconds between game polls (the event ring holds 8 events)
 RECONNECT_INTERVAL = 2.0
 GOAL_OPTION_WALTER, GOAL_OPTION_DEATH = 0, 1
 ALL_AREA_LOCKS = 0x1F         # the five hub areas (items.py AREA_KEYS), src/stagekeys.h
+BASIC_SKILLS_VANILLA = 0      # options.py BasicSkills.option_vanilla
+BASIC_SKILLS_MASK = 0x5000    # Quick Step | Perfect Guard (items.py BASIC_SKILLS_MASK, src/skills.h)
 
 
 class LoICommandProcessor(ClientCommandProcessor):
@@ -116,14 +118,16 @@ class LoIContext(CommonContext):
 
     # ---- helpers ----
     def game_items(self) -> List[Tuple[int, str]]:
-        """Every received item as (game item ID, sender name), in server order."""
-        out = []
+        """Every received item as (game item ID, sender name), in server order; progressive items
+        become their tier (game_interface.resolve_progressive)."""
+        ids, senders = [], []
         for net_item in self.items_received:
             game_id = self.ap_to_game_item.get(net_item.item)
             if game_id is None:
                 game_id = net_item.item - BASE_ID   # data says item ap_id = BASE + game id
-            out.append((game_id, self.player_names.get(net_item.player, "Archipelago")))
-        return out
+            ids.append(game_id)
+            senders.append(self.player_names.get(net_item.player, "Archipelago"))
+        return list(zip(resolve_progressive(ids), senders))
 
     def _queue_sent_popup(self, args: dict) -> None:
         """Popup for an item we found for someone else ("Sent X to Y")."""
@@ -177,6 +181,11 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
         # every poll: the game forgets it on a console reset
         locks = ALL_AREA_LOCKS if ctx.slot_data.get("area_keys") else 0
         await asyncio.to_thread(game.set_area_locks, locks)
+        vanilla = BASIC_SKILLS_MASK \
+            if ctx.slot_data.get("basic_skills", BASIC_SKILLS_VANILLA) == BASIC_SKILLS_VANILLA else 0
+        await asyncio.to_thread(game.set_skill_vanilla, vanilla)
+        qol = QOL_WOLFS_FOOT if ctx.slot_data.get("wolfs_foot_qol") else 0
+        await asyncio.to_thread(game.set_qol, qol)
         await asyncio.to_thread(game.sync_items, ctx.game_items())
         status = await asyncio.to_thread(game.status)
         if not ctx.goal_sent and ctx.goal_reached(status.goal) and ctx.server:

@@ -14,18 +14,18 @@
  * orange marker (ap_locations.h, as "Pickups left").
  * - Room transitions: each room's door records, remembered in map space while
  * Leon is in it.
- * - Leon's dot uses the pause map marker's formula (0x6C3EB8).
+ * - Leon's arrow uses the pause map marker's formula and turn (0x6C3EB8).
  * - Drawing: untextured type 4 sprites (game.h "2D primitives"); shapes are
  * filled from ROW_H-pixel rows, since the 4-vertex primitives don't work as a
  * plain object. Identical consecutive rows are merged into one sprite, so
  * straight edges cost one sprite per run.
- * - Controls: tap L3 to show/hide; hold L3 to open the settings menu (the world
- * is frozen while it is open, as for a message box). Settings last until the
- * console resets. Hooks: jal Player_UpdateStep @ 0x439EC8 (GameplayFrame case
- * 0, skipped while the world is frozen) draws the minimap; jal Obj_UpdateAll @
- * 0x439F00 (also runs on frozen frames) reads L3 and runs the menu. */
+ * - Controls: tap L3 to show/hide; the settings are the Archipelago Menu's
+ * Minimap Options page (hold L3, apmenu.c). Settings last until the console
+ * resets. Hook: jal Player_UpdateStep @ 0x439EC8 (GameplayFrame case 0, skipped
+ * while the world is frozen) draws the minimap; while the menu is open, the
+ * page's frame callback draws it as a live preview. */
 #include "ap_locations.h"
-#include "game.h"
+#include "apmenu.h"
 
 #define LAYER 1    /* the HUD text's layer */
 #define GS_Z 65000 /* as the screen fade */
@@ -37,14 +37,18 @@
 #define MAX_SPANS 8 /* separate spans per row of one shape */
 #define SPAN_EPS                                                               \
   0.5f /* rows whose span ends differ less than this merge into one sprite */
-#define DOT_R 2.0f
+#define ARROW_TIP 5.0f  /* Leon's arrow: centre to tip, */
+#define ARROW_BACK 3.0f /* centre to the back edge, */
+#define ARROW_W 3.5f    /* half the back edge */
+#define ARROW_ROWS 12   /* sprites it can take (1-pixel rows) */
+#define LEON_FWD_Z                                                             \
+  1.0f /* Leon faces world (sin yaw, cos yaw) (checked in game) */
 #define MARK_R 1.5f
 #define DOOR_R 1.5f
 #define SCREEN_W2                                                              \
   256.0f /* half screen; coordinates are screen-centre relative, y down */
 #define SCREEN_H2 224.0f
 #define MARGIN 8.0f
-#define HOLD_FRAMES 180 /* L3 held this long opens the menu */
 
 /* base colours, alpha scaled by the opacity setting: [0] elsewhere, [1] Leon is
  * in the room */
@@ -57,11 +61,11 @@ static const int clear_rgba[2][4] = {{0x20, 0x60, 0x28, 0x60},
                                      {0x48, 0x80, 0x50, 0x70}};
 static const int wall_rgba[2][4] = {{0x60, 0x70, 0x80, 0x70},
                                     {0x80, 0x80, 0x80, 0x80}};
-static const int dot_rgba[4] = {0x80, 0x80, 0x30, 0x80};
+static const int dot_rgba[4] = {0x80, 0x10, 0x10, 0x80}; /* Leon: red */
 static const int mark_rgba[4] = {0x80, 0x50, 0x10, 0x80};
-static const int door_rgba[4] = {0x80, 0x80, 0x80, 0x80};
+static const int door_rgba[4] = {0x80, 0x78, 0x10, 0x80}; /* yellow */
+static const int door_edge_rgba[4] = {0x00, 0x00, 0x00, 0x80}; /* its border */
 
-static const TextStyle text_style = {8, 0x80808080, 0, 0x100, 0x100, 0};
 
 /* ---- settings (.bss only: the pnach rewrites initialised data every frame)
  * ---- */
@@ -144,7 +148,7 @@ static u8 *frame_regs; /* this pass's shared GS register list */
 static int sprites_left;
 static int sprite_floor; /* draw_rect stops at this many left (kept for doors
                             and dot) */
-#define SPRITE_RESERVE 40
+#define SPRITE_RESERVE 60 /* 2 per door (border + fill), plus the arrow */
 
 static int gs_xy(float v) { return (int)((v + 2048.0f) * 16.0f); }
 
@@ -380,7 +384,12 @@ typedef struct {
 
 static RoomBox boxes[MAX_PIECES];
 static int box_count;
+/* The cache is keyed on the file's address AND its disc file ID: a new area's map can load at
+ * the old one's address (a Savewarp Ticket warp to another area), so the address alone would keep
+ * the old area's boxes and meshes (black minimap, only Leon's arrow). */
+#define MAP_FILE_ID (*(volatile int *)0x00B90970)
 static u8 *cached_file;
+static int cached_id;
 static u8 part_owner[256];
 static u8 *part_mesh[256];  /* first mesh of each part; a part's meshes are
                                consecutive */
@@ -405,7 +414,10 @@ static u8 *map_model(u8 *file) {
 /* nonzero when the model's part matrices place the parts (Anti-Soul Mystery
  * Lab): its meshes are then in each room's own frame, and the matrix of a
  * room's part equals its piece's pos and yaw. Elsewhere the matrices carry no
- * translation and the meshes are already in area map space. */
+ * translation and the meshes are already in area map space.
+ * Only x counts: the per-floor root matrices can carry a model z (vertical)
+ * offset that stacks the floors (Pagoda of the Misty Moon: 240 and 360), which
+ * says nothing about the meshes' frame. */
 static int model_parts_local(const u8 *model) {
   int count = *(const int *)(model + MODEL_NODE_COUNT), i;
   const float *m =
@@ -414,7 +426,7 @@ static int model_parts_local(const u8 *model) {
   if (count <= 0 || count > 1024)
     return 0;
   for (i = 0; i < count; i++, m += 16)
-    if (m[12] > 0.5f || m[12] < -0.5f || m[14] > 0.5f || m[14] < -0.5f)
+    if (m[12] > 0.5f || m[12] < -0.5f)
       return 1;
   return 0;
 }
@@ -450,7 +462,7 @@ static void build_cache(u8 *file) {
   u8 *model, *mesh;
   int i, k, n, local, prev_part = -1;
 
-  cached_file = file;
+  cached_file = 0; /* set once built: a file still loading is tried again */
   box_count = 0;
   cached_local = 0;
   for (i = 0; i < 256; i++) {
@@ -460,6 +472,8 @@ static void build_cache(u8 *file) {
   }
   if (!file || *(int *)file != 1)
     return;
+  cached_file = file;
+  cached_id = MAP_FILE_ID;
   n = *(int *)(file + 4);
   if (n > MAX_PIECES)
     n = MAX_PIECES;
@@ -522,8 +536,7 @@ static void build_cache(u8 *file) {
     }
     mesh += size;
   }
-  GamePrintf("[minimap] map file %d: %d pieces cached%s\n",
-             *(volatile int *)0x00B90970, box_count,
+  GamePrintf("[minimap] map file %d: %d pieces cached%s\n", cached_id, box_count,
              local ? " (room-local meshes)" : "");
 }
 
@@ -622,12 +635,6 @@ static void read_doors(const u8 *here, int key) {
 }
 
 /* ---- drawing the minimap ---- */
-
-static int game_busy(void) {
-  u8 *box = MsgBox_Get();
-  return IsWorldFrozen() || (*(volatile u8 *)0x00B36750 & 1) ||
-         (box && *(volatile int *)(box + MSGBOX_OPEN_FLAG));
-}
 
 /* map z grows towards the top of the pause map (north), screen y grows
  * downwards */
@@ -815,6 +822,61 @@ static int piece_tris(const RoomBox *b, int kind, float cx, float cz) {
   return n;
 }
 
+/* Leon's arrow at the panel centre, pointing his way on the map: his facing
+ * through the room's world -> map turn, as the pause map arrow (yaw + room
+ * yaw). Filled from 1-pixel rows; a plain dot when the model is missing. */
+static void draw_leon(const u8 *here) {
+  const u8 *model = PLAYER_MODEL;
+  const float *scale = (const float *)(here + PIECE_SCALE);
+  float yaw, c, s, fx, fz, dx, dy, len, t[6], y, ymin, ymax;
+  int i;
+
+  if (!model) {
+    draw_rect(panel_cx - 2.0f, panel_cy - 2.0f, panel_cx + 2.0f,
+              panel_cy + 2.0f, dot_rgba);
+    return;
+  }
+  yaw = ((const float *)(model + MODEL_ROT))[1];
+  c = cos_approx(((const float *)(here + PIECE_POS))[3]);
+  s = sin_approx(((const float *)(here + PIECE_POS))[3]);
+  fx = sin_approx(yaw);
+  fz = LEON_FWD_Z * cos_approx(yaw);
+  /* world direction -> map (world_to_map's linear part) -> screen (y down) */
+  dx = scale[0] * (c * fx + s * fz);
+  dy = -scale[2] * (-s * fx + c * fz);
+  len = dx * dx + dy * dy;
+  if (len < 1e-6f)
+    return;
+  /* 1/sqrt(len) by Newton steps from 1 (len is near 1 unless the room is
+   * scaled) */
+  {
+    float r = 1.0f;
+    for (i = 0; i < 4; i++)
+      r = r * (1.5f - 0.5f * len * r * r);
+    dx *= r;
+    dy *= r;
+  }
+  t[0] = panel_cx + dx * ARROW_TIP;
+  t[1] = panel_cy + dy * ARROW_TIP;
+  t[2] = panel_cx - dx * ARROW_BACK - dy * ARROW_W;
+  t[3] = panel_cy - dy * ARROW_BACK + dx * ARROW_W;
+  t[4] = panel_cx - dx * ARROW_BACK + dy * ARROW_W;
+  t[5] = panel_cy - dy * ARROW_BACK - dx * ARROW_W;
+  ymin = ymax = t[1];
+  for (i = 1; i < 3; i++) {
+    if (t[i * 2 + 1] < ymin)
+      ymin = t[i * 2 + 1];
+    if (t[i * 2 + 1] > ymax)
+      ymax = t[i * 2 + 1];
+  }
+  for (y = ymin; y < ymax; y += 1.0f) {
+    float lo, hi;
+
+    if (tri_band(t, y, y + 1.0f, &lo, &hi))
+      draw_rect(lo, y, hi < lo + 1.0f ? lo + 1.0f : hi, y + 1.0f, dot_rgba);
+  }
+}
+
 /* draws the minimap; `preview` = called from the menu (world frozen by us) */
 static void minimap_draw(int preview) {
   u8 *file = MAP_FILE, *here;
@@ -822,9 +884,9 @@ static void minimap_draw(int preview) {
   int floor, i;
 
   settings_init();
-  if (!file || (!preview && (set_hidden || game_busy())))
+  if (!file || (!preview && (set_hidden || apmenu_game_busy())))
     return;
-  if (file != cached_file)
+  if (file != cached_file || MAP_FILE_ID != cached_id)
     build_cache(file);
   here = Map_GetCurrentPiece();
   if (!here || !box_count)
@@ -839,7 +901,7 @@ static void minimap_draw(int preview) {
   floor = (signed char)here[PIECE_FLOOR];
   draw_rect(panel_x0, panel_y0, panel_x1, panel_y1, panel_rgba);
 
-  /* rooms leave SPRITE_RESERVE sprites for the doors and Leon's dot; Leon's
+  /* rooms leave SPRITE_RESERVE sprites for the doors and Leon's arrow; Leon's
    * room goes first */
   sprite_floor = SPRITE_RESERVE;
   for (i = 0; i < box_count; i++)
@@ -848,7 +910,7 @@ static void minimap_draw(int preview) {
   for (i = 0; i < box_count; i++)
     if (boxes[i].piece != here)
       draw_room(&boxes[i], 0, floor, cx, cz);
-  sprite_floor = 0;
+  sprite_floor = ARROW_ROWS; /* the doors leave the arrow's */
 
   /* room transitions, on top of the rooms (overlaps between neighbours are fine
    * for now) */
@@ -869,14 +931,17 @@ static void minimap_draw(int preview) {
       if (d->floor != floor)
         continue;
       map_to_screen(d->x, d->z, cx, cz, &sx, &sy);
+      /* a dark border keeps the mark visible on the pale walls */
+      draw_rect(sx - DOOR_R - 1.0f, sy - DOOR_R - 1.0f, sx + DOOR_R + 1.0f,
+                sy + DOOR_R + 1.0f, door_edge_rgba);
       draw_rect(sx - DOOR_R, sy - DOOR_R, sx + DOOR_R, sy + DOOR_R, door_rgba);
     }
   }
-  draw_rect(panel_cx - DOT_R, panel_cy - DOT_R, panel_cx + DOT_R,
-            panel_cy + DOT_R, dot_rgba);
+  sprite_floor = 0;
+  draw_leon(here);
 }
 
-/* ---- L3 and the settings menu ---- */
+/* ---- Minimap Options (an Archipelago Menu page, apmenu.h) ---- */
 
 enum {
   M_SHOW,
@@ -888,34 +953,16 @@ enum {
   M_DOORS,
   M_MARKS,
   M_GREEN,
-  M_CLOSE,
   M_COUNT
 };
-
-static int menu_open, menu_sel;
-static int l3_frames; /* frames L3 has been held */
-static int l3_used;   /* this L3 press already opened/closed the menu */
-
-static void menu_set_open(int open) {
-  if (open == menu_open)
-    return;
-  menu_open = open;
-  if (open) {
-    World_Freeze(0);
-    World_SetPausedBit(1);
-    menu_sel = 0;
-  } else {
-    World_Unfreeze();
-    World_SetPausedBit(0);
-  }
-}
 
 static void step(int *value, int count, int dir) {
   *value = (*value + dir + count) % count;
 }
 
-static void menu_change(int dir) {
-  switch (menu_sel) {
+static void options_adjust(int row, int dir) {
+  settings_init();
+  switch (row) {
   case M_SHOW:
     set_hidden = !set_hidden;
     break;
@@ -946,105 +993,70 @@ static void menu_change(int dir) {
   }
 }
 
+static void options_confirm(int row) { options_adjust(row, 1); }
+
 static const char *on_off(int off) { return off ? "Off" : "On"; }
 
-#define MENU_LINE_H 20 /* the font is about 18 px tall at scale 0x100 */
-
-#define MENU_X (-236) /* left edge of the screen, 20 px in */
-
-static void menu_draw(void) {
-  char text[48];
-  int i, y0 = -110;
-
-  DrawText("Minimap", &text_style, MENU_X, y0 - 20, LAYER,
-           RGBA(0x80, 0x80, 0x80, 0x80));
-  for (i = 0; i < M_COUNT; i++) {
-    switch (i) {
-    case M_SHOW:
-      GameSprintf(text, "Minimap: %s", on_off(set_hidden));
-      break;
-    case M_ZOOM:
-      GameSprintf(text, "Zoom: %d / %d", set_zoom + 1, N_ZOOM);
-      break;
-    case M_SIZE:
-      GameSprintf(text, "Size: %s", size_names[set_size]);
-      break;
-    case M_CORNER:
-      GameSprintf(text, "Corner: %s", corner_names[set_corner]);
-      break;
-    case M_OPACITY:
-      GameSprintf(text, "Opacity: %d%%", opacity_pct[set_opacity]);
-      break;
-    case M_SHAPES:
-      GameSprintf(text, "Room shapes: %s", on_off(set_no_shapes));
-      break;
-    case M_DOORS:
-      GameSprintf(text, "Room transitions: %s", on_off(set_no_doors));
-      break;
-    case M_MARKS:
-      GameSprintf(text, "AP pickup markers: %s", on_off(set_no_marks));
-      break;
-    case M_GREEN:
-      GameSprintf(text, "Cleared rooms green: %s", on_off(set_no_green));
-      break;
-    default:
-      GameSprintf(text, "Close");
-      break;
-    }
-    DrawText(text, &text_style, MENU_X + 4, y0 + 4 + i * MENU_LINE_H, LAYER,
-             i == menu_sel ? RGBA(0x80, 0x80, 0x30, 0x80)
-                           : RGBA(0x70, 0x70, 0x70, 0x80));
-  }
-  DrawText("Up/Down select  Left/Right change  L3 close", &text_style, MENU_X,
-           y0 + 8 + M_COUNT * MENU_LINE_H, LAYER, RGBA(0x60, 0x60, 0x60, 0x80));
-}
-
-static void controls_tick(void) {
-  u16 held = *(volatile u16 *)(PAD0_STRUCT + 2);
-  u16 pressed = *(volatile u16 *)(PAD0_STRUCT + 4);
-
+static void options_text(int row, char *out) {
   settings_init();
-  if (held & BTN_L3) {
-    l3_frames++;
-    if (l3_frames == HOLD_FRAMES && !menu_open && !l3_used && !game_busy()) {
-      menu_set_open(1);
-      l3_used = 1;
-    }
-  } else {
-    /* a tap: shows/hides the minimap, or closes the menu */
-    if (l3_frames > 0 && l3_frames < HOLD_FRAMES && !l3_used) {
-      if (menu_open)
-        menu_set_open(0);
-      else if (!game_busy())
-        set_hidden = !set_hidden;
-    }
-    l3_frames = 0;
-    l3_used = 0;
-  }
-  if (!menu_open)
-    return;
-
-  if (pressed & BTN_UP)
-    step(&menu_sel, M_COUNT, -1);
-  else if (pressed & BTN_DOWN)
-    step(&menu_sel, M_COUNT, 1);
-  else if (pressed & BTN_LEFT)
-    menu_change(-1);
-  else if (pressed & BTN_RIGHT)
-    menu_change(1);
-  else if (pressed & BTN_CROSS) {
-    if (menu_sel == M_CLOSE)
-      menu_set_open(0);
-    else
-      menu_change(1);
-  } else if (pressed & (BTN_CIRCLE | BTN_TRIANGLE))
-    menu_set_open(0);
-  if (menu_open) {
-    minimap_draw(
-        1); /* live preview: the gameplay hook is skipped while frozen */
-    menu_draw();
+  switch (row) {
+  case M_SHOW:
+    GameSprintf(out, "Minimap: %s", on_off(set_hidden));
+    break;
+  case M_ZOOM:
+    GameSprintf(out, "Zoom: %d / %d", set_zoom + 1, N_ZOOM);
+    break;
+  case M_SIZE:
+    GameSprintf(out, "Size: %s", size_names[set_size]);
+    break;
+  case M_CORNER:
+    GameSprintf(out, "Corner: %s", corner_names[set_corner]);
+    break;
+  case M_OPACITY:
+    GameSprintf(out, "Opacity: %d%%", opacity_pct[set_opacity]);
+    break;
+  case M_SHAPES:
+    GameSprintf(out, "Room shapes: %s", on_off(set_no_shapes));
+    break;
+  case M_DOORS:
+    GameSprintf(out, "Room transitions: %s", on_off(set_no_doors));
+    break;
+  case M_MARKS:
+    GameSprintf(out, "AP pickup markers: %s", on_off(set_no_marks));
+    break;
+  default:
+    GameSprintf(out, "Cleared rooms green: %s", on_off(set_no_green));
+    break;
   }
 }
+
+static void options_help(int row, char *out) {
+  GameSprintf(out, "Left/Right change  Triangle back");
+}
+
+/* tap L3: show/hide */
+static void minimap_l3_tap(void) {
+  settings_init();
+  set_hidden = !set_hidden;
+}
+
+/* live preview while the menu is open: the gameplay hook is skipped while the
+ * world is frozen */
+static void minimap_menu_frame(void) {
+  if (apmenu_is_open())
+    minimap_draw(1);
+}
+
+AP_PAGE(minimap_options_page, 010) = {
+    .title = "Minimap Options",
+    .rows = M_COUNT,
+    .row_text = options_text,
+    .confirm = options_confirm,
+    .adjust = options_adjust,
+    .help = options_help,
+    .frame = minimap_menu_frame,
+    .l3_tap = minimap_l3_tap,
+};
 
 /* ---- hooks ---- */
 
@@ -1052,10 +1064,4 @@ static void controls_tick(void) {
 void minimap_hook(void) {
   Player_UpdateStep();
   minimap_draw(0);
-}
-
-/* replaces "jal Obj_UpdateAll" @ 0x439F00 (runs on frozen frames too) */
-void minimap_input_hook(void) {
-  Obj_UpdateAll();
-  controls_tick();
 }
