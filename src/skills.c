@@ -5,7 +5,7 @@
  *   entries, one per way to learn it). For a skill not learned it switches the move off and calls
  *   0x46F480 with the three conditions; when they hold it sets the skill's bit in the learned mask
  *   (and in the "Learned new technique!!" popup's queue, object +0x18C). For a learned skill it
- *   switches the move on, unless g_PlayerStatus+0x2F4 has bit 4 (another game mode).
+ *   switches the move on, unless g_PlayerStatus+0x2F4 has bit 0x4 (cursed, see traps.c).
  * - Archipelago: the condition check (jal 0x46F480 @ 0x46F418) goes through skill_check_hook,
  *   which only lets it pass for the skills in AP_STATUS->skill_vanilla (written by the client
  *   from the Basic Skills option; 0 after a console reset until the client writes it, so nothing

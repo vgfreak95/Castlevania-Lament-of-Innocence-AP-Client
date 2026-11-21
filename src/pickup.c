@@ -23,6 +23,7 @@
 #include "skills.h"
 #include "qol.h"
 #include "shop.h"
+#include "traps.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -393,6 +394,10 @@ static int give_item(int id)
         skill_give(id);
         return 0;
     }
+    if (trap_item(id)) {               /* trap (traps.h): spring it */
+        trap_give(id);
+        return 0;
+    }
     for (i = 0; i < (int)sizeof(fake_obj); i++)
         fake_obj[i] = 0;
     *(int *)(fake_obj + ITEMOBJ_ID) = id;
@@ -432,7 +437,8 @@ static void recv_tick(void)
     RECV_APPLIED = applied + 1;
     q->applied = applied + 1;
 
-    name = skill_item(item) ? skill_name(item) : Item_GetNameText(item);
+    name = skill_item(item) ? skill_name(item)
+         : trap_item(item)  ? trap_name(item) : Item_GetNameText(item);
     GamePrintf("[recv] #%d item %02X %s from %s\n", applied, item, name, sender);
     if (gold) {
         GamePrintf("[recv] inventory full: $%d instead\n", gold);

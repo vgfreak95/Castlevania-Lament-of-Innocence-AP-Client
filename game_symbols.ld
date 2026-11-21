@@ -70,3 +70,6 @@ Tex_Find             = 0x00417950;
 Clut_Upload          = 0x00418ED8;
 Text_ParseCode       = 0x00445528;
 Skill_CheckConditions = 0x0046F480;
+PlayerHitCheck       = 0x00464238;
+Player_DamageReaction = 0x00464698;
+Player_GetFacing     = 0x00460C30;
