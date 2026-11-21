@@ -103,13 +103,15 @@ straight away.
 
 With `trap_chance` above 0 (the default is 0), that percent of the filler items become traps. Each
 trap's weight option (`paralysis_trap_weight`, `curse_trap_weight`, `stone_trap_weight`,
-`knockback_trap_weight`, 0-10, default 1) sets how likely a trap is to be that one; a weight of 0
-leaves it out.
+`knockback_trap_weight`, `poison_trap_weight`, 0-10, default 1) sets how likely a trap is to be
+that one; a weight of 0 leaves it out.
 
 - **Paralysis Trap**: Leon is paralyzed, as if a paralyzing attack hit him.
 - **Curse Trap**: Leon is cursed, losing his whip skills until it wears off.
 - **Stone Trap**: Leon is turned to stone until you mash free.
-- These three come with a light hit that does no damage, the way the enemy attacks that cause
+- **Poison Trap**: Leon is poisoned, losing 1 HP every few seconds (never below 1) until it wears
+  off.
+- These four come with a light hit that does no damage, the way the enemy attacks that cause
   them do. They wait while Leon is turned to stone.
 - **Knockback Trap**: Leon is smacked backwards across the room, like the strongest enemy hits,
   without taking damage. It waits while Leon is dead or turned to stone.

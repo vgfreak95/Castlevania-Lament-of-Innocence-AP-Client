@@ -44,7 +44,8 @@ class TestTrapsAllFiller(TrapsBase):
 
 class TestTrapsOnlyKnockback(TrapsBase):
     options = {"trap_chance": 100, "paralysis_trap_weight": 0, "curse_trap_weight": 0,
-               "stone_trap_weight": 0, "knockback_trap_weight": 3}
+               "stone_trap_weight": 0, "knockback_trap_weight": 3,
+               "poison_trap_weight": 0}
 
     def test_only_knockback(self) -> None:
         traps = self.traps_in_pool()
@@ -54,7 +55,8 @@ class TestTrapsOnlyKnockback(TrapsBase):
 
 class TestTrapsAllWeightsZero(TrapsBase):
     options = {"trap_chance": 100, "paralysis_trap_weight": 0, "curse_trap_weight": 0,
-               "stone_trap_weight": 0, "knockback_trap_weight": 0}
+               "stone_trap_weight": 0, "knockback_trap_weight": 0,
+               "poison_trap_weight": 0}
 
     def test_no_traps(self) -> None:
         self.assertEqual(self.traps_in_pool(), [])

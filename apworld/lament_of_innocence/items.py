@@ -56,6 +56,7 @@ TRAPS: Dict[str, str] = {
     "Curse Trap": "curse_trap_weight",
     "Stone Trap": "stone_trap_weight",
     "Knockback Trap": "knockback_trap_weight",
+    "Poison Trap": "poison_trap_weight",
 }
 
 ITEM_GROUPS: Dict[str, Set[str]] = {

@@ -8,16 +8,19 @@
  * the check and then raises what an enemy hit would.
  *
  * Ailments: bits of g_PlayerStatus+0x2F4: 0x1 poison, 0x2 stone, 0x4 curse, 0x8 paralysis. Each
- * has an update (0x477CC0 stone, 0x477730 curse, 0x4783A8 paralysis) that starts it, with its
- * timer and colour, when its bit is set or its hit flag is raised; setting the bit alone gives
- * only that, not the effect. In vanilla the ailment comes with a hit: the hit puts Leon in the
- * hurt state (0xA8/0xA9), whose damage handler (0x467178) raises the ailment's hit flag
- * (0x50040 stone, 0x50080 curse, 0x50100 + 0x60040 paralysis) from the attack's record, and the
- * hurt state's table moves him on: 0x50040 -> 0xA3 (stoned, held until he mashes free),
- * 0x50100 -> 0xA2 (paralyzed). The idle state's table has no such entries. Curse has no state:
- * its update switches the whip skills off until it wears off. So an ailment trap does the same:
- * a light hit with no damage, then its hit flags for AILMENT_FRAMES frames while the hurt state
- * runs (checked in game: stone and paralysis reach their states, curse turns the skills off).
+ * has an update (0x4770B8 poison, 0x477CC0 stone, 0x477730 curse, 0x4783A8 paralysis) that
+ * starts it, with its timer and colour, when its bit is set or its hit flag is raised; setting
+ * the bit alone gives only that, not the effect. In vanilla the ailment comes with a hit: the hit
+ * puts Leon in the hurt state (0xA8/0xA9), whose damage handler (0x467178) raises the ailment's
+ * hit flag (0x50020 poison, 0x50040 stone, 0x50080 curse, 0x50100 + 0x60040 paralysis) from the
+ * attack's record, and the hurt state's table moves him on: 0x50040 -> 0xA3 (stoned, held until
+ * he mashes free), 0x50100 -> 0xA2 (paralyzed). The idle state's table has no such entries.
+ * Curse and poison have no state: curse switches the whip skills off until it wears off; poison
+ * takes 1 HP every 2.8-4 s (with a flinch, state 0xA6), never below 1 HP, for up to 32 s (less
+ * with luck).
+ * So an ailment trap does the same: a light hit with no damage, then its hit flags for
+ * AILMENT_FRAMES frames while the hurt state runs (checked in game: stone and paralysis reach
+ * their states, curse turns the skills off, poison drains HP).
  *
  * Knockback: for each hit the check calls the damage reaction
  * 0x464698(player, body, attack), which for an attack with flag 0x10 (attack +0x150) raises the
@@ -36,6 +39,7 @@
 #define AILMENT_CURSE      0x4
 #define AILMENT_PARALYSIS  0x8
 /* player flags the damage handler raises to start each ailment (see above) */
+#define AILMENT_HIT_POISON     0x50020
 #define AILMENT_HIT_STONE      0x50040
 #define AILMENT_HIT_CURSE      0x50080
 #define AILMENT_HIT_PARALYSIS  0x50100
@@ -60,7 +64,7 @@
 #define KNOCK_MAX_PENDING  3
 
 static const char *const names[TRAP_COUNT] = {
-    "Paralysis Trap", "Curse Trap", "Stone Trap", "Knockback Trap",
+    "Paralysis Trap", "Curse Trap", "Stone Trap", "Knockback Trap", "Poison Trap",
 };
 
 void PlayerHitCheck(int player, u8 *pl);                    /* 0x464238 */
@@ -85,6 +89,7 @@ void trap_give(int id)
     case TRAP_PARALYSIS: ailment_pending |= AILMENT_HIT_PARALYSIS; break;
     case TRAP_CURSE:     ailment_pending |= AILMENT_HIT_CURSE; break;
     case TRAP_STONE:     ailment_pending |= AILMENT_HIT_STONE; break;
+    case TRAP_POISON:    ailment_pending |= AILMENT_HIT_POISON; break;
     case TRAP_KNOCKBACK:
         if (knock_pending < KNOCK_MAX_PENDING)
             knock_pending++;
@@ -133,6 +138,7 @@ void knock_hook(int player, u8 *pl)
         }
         if (ailment_active & AILMENT_HIT_CURSE & 0xFFFF) Player_SetFlag(0, AILMENT_HIT_CURSE, 1);
         if (ailment_active & AILMENT_HIT_STONE & 0xFFFF) Player_SetFlag(0, AILMENT_HIT_STONE, 1);
+        if (ailment_active & AILMENT_HIT_POISON & 0xFFFF) Player_SetFlag(0, AILMENT_HIT_POISON, 1);
         return;
     }
     if (ailment_pending && !(PS_AILMENTS & AILMENT_STONE)) {

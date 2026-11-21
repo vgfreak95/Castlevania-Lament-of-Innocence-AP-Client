@@ -1208,6 +1208,14 @@
     "filler_weight": 0
   },
   {
+    "name": "Poison Trap",
+    "game_id": 532,
+    "ap_id": 207330532,
+    "classification": "trap",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
     "name": "Progressive Brooch",
     "game_id": 768,
     "ap_id": 207330768,

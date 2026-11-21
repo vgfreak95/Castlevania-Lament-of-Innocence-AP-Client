@@ -5,8 +5,9 @@
 
 #include "game.h"
 
-#define TRAP_ITEM_BASE  0x210       /* apworld items.json game_id 528-531 */
-enum { TRAP_PARALYSIS, TRAP_CURSE, TRAP_STONE, TRAP_KNOCKBACK, TRAP_COUNT };
+#define TRAP_ITEM_BASE  0x210       /* apworld items.json game_id 528-532 */
+enum { TRAP_PARALYSIS, TRAP_CURSE, TRAP_STONE, TRAP_KNOCKBACK, TRAP_POISON,
+       TRAP_COUNT };
 
 static inline int trap_item(int id)
 {

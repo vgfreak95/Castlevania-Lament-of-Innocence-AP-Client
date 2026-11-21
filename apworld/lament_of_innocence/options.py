@@ -121,6 +121,15 @@ class KnockbackTrapWeight(Range):
     default = 1
 
 
+class PoisonTrapWeight(Range):
+    """How likely a trap is to be a Poison Trap: Leon is poisoned, slowly losing HP (never below
+    1) until it wears off."""
+    display_name = "Poison Trap Weight"
+    range_start = 0
+    range_end = 10
+    default = 1
+
+
 class TorchSanity(Toggle):
     """NOT IMPLEMENTED YET: add sub-weapon torches and candles as locations. Ignored for now."""
     display_name = "Torch Sanity (not implemented)"
@@ -156,5 +165,6 @@ class LoIOptions(PerGameCommonOptions):
     curse_trap_weight: CurseTrapWeight
     stone_trap_weight: StoneTrapWeight
     knockback_trap_weight: KnockbackTrapWeight
+    poison_trap_weight: PoisonTrapWeight
     torch_sanity: TorchSanity
     enemy_drop_sanity: EnemyDropSanity
