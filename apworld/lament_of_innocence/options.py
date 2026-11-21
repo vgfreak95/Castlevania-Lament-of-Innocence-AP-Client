@@ -77,6 +77,50 @@ class WolfsFootQoL(Toggle):
     display_name = "Wolf's Foot QoL"
 
 
+class TrapChance(Range):
+    """Percent chance for each filler item to be replaced with a trap instead (the trap is picked
+    with the trap weights below)."""
+    display_name = "Trap Chance"
+    range_start = 0
+    range_end = 100
+    default = 0
+
+
+class ParalysisTrapWeight(Range):
+    """How likely a trap is to be a Paralysis Trap: Leon is paralyzed, as if hit by a paralyzing
+    attack."""
+    display_name = "Paralysis Trap Weight"
+    range_start = 0
+    range_end = 10
+    default = 1
+
+
+class CurseTrapWeight(Range):
+    """How likely a trap is to be a Curse Trap: Leon is cursed, losing his whip skills until it
+    wears off."""
+    display_name = "Curse Trap Weight"
+    range_start = 0
+    range_end = 10
+    default = 1
+
+
+class StoneTrapWeight(Range):
+    """How likely a trap is to be a Stone Trap: Leon is turned to stone until he mashes free."""
+    display_name = "Stone Trap Weight"
+    range_start = 0
+    range_end = 10
+    default = 1
+
+
+class KnockbackTrapWeight(Range):
+    """How likely a trap is to be a Knockback Trap: Leon is smacked backwards across the room,
+    without taking damage."""
+    display_name = "Knockback Trap Weight"
+    range_start = 0
+    range_end = 10
+    default = 1
+
+
 class TorchSanity(Toggle):
     """NOT IMPLEMENTED YET: add sub-weapon torches and candles as locations. Ignored for now."""
     display_name = "Torch Sanity (not implemented)"
@@ -107,5 +151,10 @@ class LoIOptions(PerGameCommonOptions):
     progressive_brooch: ProgressiveBrooch
     progressive_plates: ProgressivePlates
     wolfs_foot_qol: WolfsFootQoL
+    trap_chance: TrapChance
+    paralysis_trap_weight: ParalysisTrapWeight
+    curse_trap_weight: CurseTrapWeight
+    stone_trap_weight: StoneTrapWeight
+    knockback_trap_weight: KnockbackTrapWeight
     torch_sanity: TorchSanity
     enemy_drop_sanity: EnemyDropSanity

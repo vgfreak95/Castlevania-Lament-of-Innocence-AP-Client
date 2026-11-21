@@ -11,6 +11,7 @@ _CLASSIFICATION = {
     "progression": ItemClassification.progression,
     "useful": ItemClassification.useful,
     "filler": ItemClassification.filler,
+    "trap": ItemClassification.trap,
 }
 
 ITEM_TABLE: Dict[str, dict] = {rec["name"]: rec for rec in ITEMS}
@@ -47,8 +48,19 @@ PROGRESSIVE: Dict[str, List[str]] = {
     "Progressive Plate": ["Earth Plate", "Meteor Plate", "Moonlight Plate", "Solar Plate"],
 }
 
+
+# Traps (src/traps.h, game_id 0x210 + n): only ever replace filler, Trap Chance percent of it.
+# Trap name -> its weight option (options.py).
+TRAPS: Dict[str, str] = {
+    "Paralysis Trap": "paralysis_trap_weight",
+    "Curse Trap": "curse_trap_weight",
+    "Stone Trap": "stone_trap_weight",
+    "Knockback Trap": "knockback_trap_weight",
+}
+
 ITEM_GROUPS: Dict[str, Set[str]] = {
     "Skills": set(SKILLS),
+    "Traps": set(TRAPS),
     "Plates": {"Earth Plate", "Meteor Plate", "Moonlight Plate", "Solar Plate", "Progressive Plate"},
     "Brooches": {"Heart Brooch", "Mobius's Brooch", "Progressive Brooch"},
     "Area Keys": set(AREA_KEYS.values()),
@@ -123,6 +135,13 @@ def create_all_items(world: "LoIWorld") -> None:
     unfilled = len(world.multiworld.get_unfilled_locations(world.player))
     if len(pool) > unfilled:
         raise Exception(f"{GAME_NAME}: {len(pool)} pool items for {unfilled} locations")
+    traps = list(TRAPS)
+    trap_weights = [getattr(world.options, TRAPS[name]).value for name in traps]
+    trap_chance = world.options.trap_chance.value if any(trap_weights) else 0
     while len(pool) < unfilled:
-        pool.append(create_item(world, get_filler_item_name(world)))
+        if world.random.randrange(100) < trap_chance:
+            name = world.random.choices(traps, weights=trap_weights)[0]
+        else:
+            name = get_filler_item_name(world)
+        pool.append(create_item(world, name))
     world.multiworld.itempool += pool

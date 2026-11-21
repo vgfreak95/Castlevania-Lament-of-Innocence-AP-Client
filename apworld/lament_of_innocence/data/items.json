@@ -1176,6 +1176,38 @@
     "filler_weight": 0
   },
   {
+    "name": "Paralysis Trap",
+    "game_id": 528,
+    "ap_id": 207330528,
+    "classification": "trap",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Curse Trap",
+    "game_id": 529,
+    "ap_id": 207330529,
+    "classification": "trap",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Stone Trap",
+    "game_id": 530,
+    "ap_id": 207330530,
+    "classification": "trap",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
+    "name": "Knockback Trap",
+    "game_id": 531,
+    "ap_id": 207330531,
+    "classification": "trap",
+    "count": 0,
+    "filler_weight": 0
+  },
+  {
     "name": "Progressive Brooch",
     "game_id": 768,
     "ap_id": 207330768,

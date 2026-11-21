@@ -99,6 +99,25 @@ straight away.
   it lasts twice as long. The client turns it on every time it connects; after a console reset it
   drains at the normal rate until the client is connected again.
 
+## Traps
+
+With `trap_chance` above 0 (the default is 0), that percent of the filler items become traps. Each
+trap's weight option (`paralysis_trap_weight`, `curse_trap_weight`, `stone_trap_weight`,
+`knockback_trap_weight`, 0-10, default 1) sets how likely a trap is to be that one; a weight of 0
+leaves it out.
+
+- **Paralysis Trap**: Leon is paralyzed, as if a paralyzing attack hit him.
+- **Curse Trap**: Leon is cursed, losing his whip skills until it wears off.
+- **Stone Trap**: Leon is turned to stone until you mash free.
+- These three come with a light hit that does no damage, the way the enemy attacks that cause
+  them do. They wait while Leon is turned to stone.
+- **Knockback Trap**: Leon is smacked backwards across the room, like the strongest enemy hits,
+  without taking damage. It waits while Leon is dead or turned to stone.
+
+The status effects last as long as the vanilla ones and are cured the vanilla ways (Uncurse
+Potion, Diamond and so on). A trap only takes effect once; reloading an older save doesn't repeat it
+unless that save is from before the trap arrived.
+
 ## What is the goal?
 
 - `defeat_walter` (default): beat Walter Bernhard.
