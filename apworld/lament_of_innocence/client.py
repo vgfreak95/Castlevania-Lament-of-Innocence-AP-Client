@@ -10,6 +10,9 @@ Start it from the Archipelago Launcher ("Lament of Innocence Client"), or for de
 from __future__ import annotations
 
 import asyncio
+import struct
+import webbrowser
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 import Utils
@@ -21,7 +24,9 @@ from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS, TORCHES
 from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, QOL_WOLFS_FOOT, GameMismatch,
                              GameStatus, LoIInterface, TorchSpot, build_key_map,
                              resolve_progressive)
+from .mapshapes import MapShapeError
 from .pine import DEFAULT_SLOT, Pine, PineError
+from .tracker import MapTracker
 
 POLL_INTERVAL = 0.1           # seconds between game polls (the event ring holds 8 events)
 RECONNECT_INTERVAL = 2.0
@@ -30,6 +35,8 @@ ALL_AREA_LOCKS = 0x1F         # the five hub areas (items.py AREA_KEYS), src/sta
 BASIC_SKILLS_VANILLA = 0      # options.py BasicSkills.option_vanilla
 BASIC_SKILLS_MASK = 0x5000    # Quick Step | Perfect Guard (items.py BASIC_SKILLS_MASK, src/skills.h)
 TORCH_SANITY_OFF = 0          # options.py TorchSanity.option_off
+MAP_TICK_EVERY = 2            # game polls per map tracker update (5 per second)
+PICKUP_KEY_LIMIT = 0x8000     # game_keys below this are room_key * 64 + index (boss rewards above)
 
 
 class LoICommandProcessor(ClientCommandProcessor):
@@ -64,6 +71,17 @@ class LoICommandProcessor(ClientCommandProcessor):
         self.output(f"Using PINE slot {self.ctx.pine_slot}")
         return True
 
+    def _cmd_map(self) -> bool:
+        """Open the 3D map tracker in your browser (the Map tab shows the same map in 2D)."""
+        try:
+            url = self.ctx.map_tracker.start()
+        except OSError as exc:
+            self.output(f"Could not start the map tracker: {exc}")
+            return False
+        self.output(f"Map tracker at {url} (each area's map appears once Leon has been there)")
+        webbrowser.open(url)
+        return True
+
 
 class LoIContext(CommonContext):
     command_processor = LoICommandProcessor
@@ -88,6 +106,9 @@ class LoIContext(CommonContext):
         self.pending_kills = 0                   # received DeathLinks not yet passed to the game
         # ((slot torch count, checked torch ap_ids), torch table) last built
         self.torch_spots_cache: Optional[Tuple[Tuple[int, frozenset], List[TorchSpot]]] = None
+        self.map_tracker = MapTracker(Path(Utils.cache_path("lament_of_innocence", "maps")))
+        self.map_ticks = 0
+        self.map_ap_key: Optional[tuple] = None   # what the tracker's AP view was built from
         unmapped = sum(1 for rec in LOCATIONS if rec.get("game_key") is None)
         if unmapped:
             logger.warning(f"{unmapped} locations have no game_key yet (run tools/loc_scan.py); "
@@ -96,7 +117,16 @@ class LoIContext(CommonContext):
     def make_gui(self):
         ui = super().make_gui()
         ui.base_title = "Archipelago Lament of Innocence Client"
-        return ui
+        from .map_view import build_map_tab
+        tracker = self.map_tracker
+
+        class LoIManager(ui):
+            def build(self):
+                container = super().build()
+                self.add_client_tab("Map", build_map_tab(tracker))
+                return container
+
+        return LoIManager
 
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
@@ -142,6 +172,31 @@ class LoIContext(CommonContext):
                  for rec in TORCHES if rec["ap_id"] in slot_torches]
         self.torch_spots_cache = ((len(slot_torches), checked), spots)
         return spots
+
+    # ---- map tracker ----
+    def update_map_ap(self) -> None:
+        """Give the map tracker the slot's locations by room and its torches, when they change."""
+        checked = frozenset(self.checked_locations | self.locations_checked)
+        key = (self.slot, len(self.server_locations), checked)
+        if key == self.map_ap_key:
+            return
+        self.map_ap_key = key
+        rooms: Dict[str, List] = {}
+        torches = []
+        if self.slot is not None:
+            for rec in LOCATIONS:
+                game_key = rec.get("game_key")
+                if game_key is None or game_key >= PICKUP_KEY_LIMIT or rec["ap_id"] not in self.server_locations:
+                    continue
+                rooms.setdefault(str(game_key // 64), []).append([rec["name"], rec["ap_id"] in checked])
+            for rec in TORCHES:
+                if rec["ap_id"] not in self.server_locations:
+                    continue
+                x, z = struct.unpack("<2f", struct.pack("<2I", rec["x_bits"], rec["z_bits"]))
+                torches.append({"name": rec["name"], "stage": rec["stage"], "room": rec["room"],
+                                "x": x, "z": z, "checked": rec["ap_id"] in checked})
+        self.map_tracker.set_ap({"slot": self.player_names.get(self.slot) if self.slot is not None else None,
+                                 "rooms": rooms, "torches": torches})
 
     # ---- helpers ----
     def game_items(self) -> List[Tuple[int, str]]:
@@ -235,6 +290,23 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
             break                      # queue full; try again next poll
         ctx.pending_popups.pop(0)
 
+    await map_tick(ctx, game)
+
+
+async def map_tick(ctx: LoIContext, game: LoIInterface) -> None:
+    """Feed the map tracker over this client's PINE connection, while the Map tab or /map's web
+    page is reading it."""
+    if not (ctx.map_tracker.enabled or ctx.map_tracker.server):
+        return
+    ctx.map_ticks += 1
+    if ctx.map_ticks % MAP_TICK_EVERY:
+        return
+    ctx.update_map_ap()
+    try:
+        await asyncio.to_thread(ctx.map_tracker.tick, game.mem)
+    except (MapShapeError, struct.error, ValueError, IndexError) as exc:
+        logger.debug(f"map tracker: {exc}")   # mid-load data; the next tick tries again
+
 
 async def deathlink_tick(ctx: LoIContext, game: LoIInterface, status: GameStatus) -> None:
     """Leon's new deaths -> DeathLink; received DeathLinks -> kill requests. The game doesn't count
@@ -280,10 +352,12 @@ async def game_loop(ctx: LoIContext) -> None:
             if game is not None or ctx.game_state.startswith("connected"):
                 logger.info(f"Lost PCSX2: {exc}. Retrying...")
             ctx.game_state = "not connected (start PCSX2 with PINE enabled)"
+            ctx.map_tracker.disconnected()
             game = None
             await asyncio.sleep(RECONNECT_INTERVAL)
     if pine:
         pine.close()
+    ctx.map_tracker.stop()
 
 
 def launch_client(*args) -> None:

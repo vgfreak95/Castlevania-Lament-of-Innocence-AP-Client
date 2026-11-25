@@ -70,6 +70,25 @@ Extra commands in the client:
 | `/pcsx2`      | Shows whether the client is connected to PCSX2 and the game.        |
 | `/popups`     | Turns the in-game "sent item" popups on or off.                     |
 | `/slot 28011` | Changes the PINE slot, if you set PCSX2 to use a different one.     |
+| `/map`        | Opens the 3D map tracker in your browser (see below).               |
+
+### Map tracker
+
+The client's **Map** tab shows a top-down map of the castle. It shows the rooms you've visited,
+where Leon is and which way he faces, and the doors you've been through. Rooms whose Archipelago
+pickups are all checked turn green. Rooms with pickups left get an orange marker, and so do
+unchecked torches with Torch Sanity on. Click a room to list its locations. Drag to pan, scroll to
+zoom, double-click (or **Fit**) to see the whole area. **Follow** keeps Leon centred and switches
+areas with him. By default Leon's floor is drawn on top and the other floors are dimmed; the floor
+menu can show all floors or just one.
+
+`/map` opens the same map in 3D in your browser instead. Drag to orbit, right-drag to pan, scroll
+to zoom; **F** toggles following Leon, **T** is a top view. The page needs internet access the
+first time: its 3D library (three.js) loads from a CDN.
+
+The map uses the client's own connection to PCSX2, so it runs alongside the game with nothing
+else to set up. Each area's map is read from your game the first time Leon is in it while the
+client is connected, and is kept on your PC, so nothing from the game ships with the apworld.
 
 ## What's randomized
 
