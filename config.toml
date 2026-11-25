@@ -21,11 +21,13 @@ pnach = "ap"                    # the [pnach.*] that --install copies when none 
 #            (checked against SLUS_207.33, only written to the pnach as a comment) and the function;
 #            jump = true writes a j instead: it takes over the whole function at its entry (returns
 #            straight to the game's caller; the original delay slot instruction still runs first)
+#   pokes    plain word writes into the game's code: the site, the original word (a comment, like
+#            hooks') and the value written (e.g. 0 = nop)
 
 # mailbox at 0xFC000 (src/pickup.c), message queue at 0xFD000 (src/msgbox.h), received-item notices at 0xFD800 (src/toast.h)
 [patch.pickup]
 title = "Archipelago Pickups"
-description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000 and get a small notice at the bottom right (top right when the minimap is there). Whip skills are learned from AP items (Basic Skills option: Quick Step and Perfect Guard can stay vanilla). Wolf's Foot QoL option: MP drain from none to normal. Rinaldo no longer sells the plates, Mobius's Brooch or the Jade Mask (they're in the item pool). Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
+description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000 and get a small notice at the bottom right (top right when the minimap is there). Whip skills are learned from AP items (Basic Skills option: Quick Step and Perfect Guard can stay vanilla). Wolf's Foot QoL option: MP drain from none to normal. The Prelude's tutorial Golden Knight can be hurt by any attack (not only the Svarog Statue), and the Svarog Statue no longer equips itself when received. Rinaldo no longer sells the plates, Mobius's Brooch or the Jade Mask (they're in the item pool). Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
 base = 0x000F9000                # code + .bss must end below the mailbox at 0xFC000
 sources = ["src/pickup.c", "src/msgbox.c", "src/toast.c", "src/stagekeys.c", "src/skills.c", "src/qol.c", "src/shop.c", "src/traps.c"]
 hooks = [
@@ -44,6 +46,16 @@ hooks = [
     { site = 0x004544DC, original = 0x0C10E19C, function = "door_prompt_done_hook" }, # jal World_SetFreezeBit(0) when a door prompt is answered: close the box it leaves open
     { site = 0x0046F418, original = 0x0C11BD20, function = "skill_check_stub" },   # jal Skill_CheckConditions in the skill unlock loop (src/skills.c)
     { site = 0x00460714, original = 0x0C11908E, function = "knock_hook" },         # jal PlayerHitCheck in the player update (src/traps.c, Knockback Trap)
+]
+pokes = [
+    # The Prelude's tutorial Golden Knight (actor class 79, constructor 0x550678) swaps in its own
+    # hit handler 0x552570, which only takes attack IDs 26/27 (Lucifer's Sword, Svarog Statue's
+    # flames) and bounces everything else. Skipping the swap leaves it the normal Golden Knight's
+    # handler 0x554640 (whip and sub-weapons hurt it), so it doesn't need the Svarog Statue.
+    { site = 0x005506AC, original = 0xAE020250, value = 0x00000000 },  # sw v0, 0x250(s0) -> nop
+    # Item_OnPickup equips the Svarog Statue as the relic when it's picked up or received
+    # (if id == 0x8E: 0x468E20(0x8E), sets PS_RELIC); without it the equipped relic stays.
+    { site = 0x004472DC, original = 0x0C11A388, value = 0x00000000 },  # jal 0x468E20 -> nop (delay slot li a0 is harmless)
 ]
 
 # torch table at 0xC0000, check ring at 0xC7900, debug scan buffer at 0xC8000 (src/torches.h)

@@ -30,6 +30,11 @@ The new [Savewarp Ticket](#savewarp-ticket) isn't shuffled: it's only sold in Ri
 Rinaldo no longer sells the items of his that are in the pool: the four plates, Mobius's Brooch and
 the Jade Mask only come from the multiworld. You can still sell them to him.
 
+The Svarog Statue is shuffled like any other relic, and you don't start with it. The Prelude's
+tutorial Golden Knight, which normally only takes damage from the Svarog Statue's flames, can be
+beaten with the whip or a sub-weapon. Getting the Svarog Statue no longer equips it, so the relic
+you have equipped stays.
+
 ## Area Keys
 
 With `area_keys` on (the default), each of the five areas you reach from the floating rocks in the

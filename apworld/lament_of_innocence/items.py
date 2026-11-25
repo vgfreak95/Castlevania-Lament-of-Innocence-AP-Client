@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, List, Set
+from typing import TYPE_CHECKING, Dict, List, Set, Tuple
 
 from BaseClasses import Item, ItemClassification
 
@@ -93,10 +93,12 @@ def get_filler_item_name(world: "LoIWorld") -> str:
     return world.random.choices(names, weights=[FILLER_WEIGHTS[n] for n in names])[0]
 
 
-# Given at the start instead of placed: the Prelude's Golden Knight (the tutorial fight) can't be
-# beaten without the Svarog Statue. Start inventory reaches the game through the client like any
+# Given at the start instead of placed (none at the moment). The Svarog Statue used to be: the
+# Prelude's tutorial Golden Knight only took its flames, until the Archipelago patch gave the
+# knight the normal Golden Knight's hit handler (config.toml pokes, 0x5506AC), so now it's
+# shuffled like any relic. Start inventory reaches the game through the client like any
 # received item.
-STARTING_ITEMS = ("Svarog Statue",)
+STARTING_ITEMS: Tuple[str, ...] = ()
 
 
 def pick_starting_area_keys(world: "LoIWorld") -> List[str]:

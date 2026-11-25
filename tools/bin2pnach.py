@@ -60,11 +60,15 @@ def patch_lines(name, patch, build_dir):
         # jal by default; jump = true writes a j instead (takes over a whole function at its entry)
         opcode = 0x08000000 if h.get('jump') else 0x0C000000
         hooks.append((h['site'], h['original'], opcode | (syms[h['function']] >> 2), h['function']))
+    # pokes: plain word writes into the game's code (e.g. a nop), no function of ours
+    pokes = [(p['site'], p['original'], p['value']) for p in patch.get('pokes', [])]
 
     lines = [f"// {patch['title']}: {len(code)} bytes at {base:#010x}"]
     lines += [f'// hook {site:#010x}: {orig:08X} -> {jal:08X} ({fn})' for site, orig, jal, fn in hooks]
     lines += [f'patch=1,EE,{base + 4 * i:08X},word,{w:08X}' for i, w in enumerate(words)]
     lines += [f'patch=1,EE,{site:08X},word,{jal:08X}' for site, _, jal, _ in hooks]
+    lines += [f'// poke {site:#010x}: {orig:08X} -> {value:08X}' for site, orig, value in pokes]
+    lines += [f'patch=1,EE,{site:08X},word,{value:08X}' for site, _, value in pokes]
 
     print(f"{patch['title']}: {len(words)} words at {base:#x}, " +
           ', '.join(f'{fn}={syms[fn]:#x}' for _, _, _, fn in hooks))
