@@ -74,6 +74,17 @@ class LoICommandProcessor(ClientCommandProcessor):
         self.output(f"Using PINE slot {self.ctx.pine_slot}")
         return True
 
+    def _cmd_socket(self, path: str = "") -> bool:
+        """Connect to PCSX2 over this Unix socket (Linux/macOS), or "auto" for PCSX2's default."""
+        if not path:
+            self.output(f"PINE socket is {self.ctx.pine_socket or 'auto'}; "
+                        "usage: /socket /run/user/1000/pcsx2.sock (or /socket auto)")
+            return False
+        self.ctx.pine_socket = None if path.lower() == "auto" else path
+        self.ctx.reconnect_game = True
+        self.output(f"Using PINE socket {self.ctx.pine_socket or 'auto'}")
+        return True
+
     def _cmd_map(self) -> bool:
         """Open the 3D map tracker in your browser (the Map tab shows the same map in 2D)."""
         try:
@@ -95,6 +106,7 @@ class LoIContext(CommonContext):
     def __init__(self, server_address: Optional[str], password: Optional[str]):
         super().__init__(server_address, password)
         self.pine_slot = DEFAULT_SLOT
+        self.pine_socket: Optional[str] = None   # explicit Unix socket path; None = auto
         self.reconnect_game = False
         self.popups = True
         self.game_state = "not connected"
@@ -403,13 +415,13 @@ async def game_loop(ctx: LoIContext) -> None:
                 ctx.reconnect_game = False
                 if pine:
                     pine.close()
-                pine = Pine(ctx.pine_slot)
+                pine = Pine(ctx.pine_slot, socket_path=ctx.pine_socket)
                 await asyncio.to_thread(pine.connect)
                 game = LoIInterface(pine)
                 await asyncio.to_thread(game.check_game)
                 ctx.last_deaths = None           # new session: don't send old deaths
-                ctx.game_state = f"connected on PINE slot {ctx.pine_slot}"
-                logger.info(f"Connected to Lament of Innocence in PCSX2 (PINE slot {ctx.pine_slot}).")
+                ctx.game_state = f"connected on PINE {pine.endpoint}"
+                logger.info(f"Connected to Lament of Innocence in PCSX2 (PINE {pine.endpoint}).")
             await game_tick(ctx, game)
             await asyncio.sleep(POLL_INTERVAL)
         except GameMismatch as exc:
@@ -440,9 +452,12 @@ def launch_client(*args) -> None:
         parser = get_base_parser(description="Lament of Innocence Archipelago client")
         parser.add_argument("--pine-slot", type=int, default=DEFAULT_SLOT,
                             help="PCSX2 PINE slot (port), default 28011")
+        parser.add_argument("--pine-socket", default=None,
+                            help="PCSX2 PINE Unix socket path (Linux/macOS); default: PCSX2's own")
         parsed, _ = parser.parse_known_args(args)
         ctx = LoIContext(parsed.connect, parsed.password)
         ctx.pine_slot = parsed.pine_slot
+        ctx.pine_socket = parsed.pine_socket
         ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
         if gui_enabled:
             ctx.run_gui()

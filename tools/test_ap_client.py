@@ -173,6 +173,58 @@ class PineTests(unittest.TestCase):
         with self.assertRaises(pine.PineError):
             pine.Pine().read32(0)
 
+    def test_default_socket_paths(self):
+        env = {"XDG_RUNTIME_DIR": "/run/user/1000"}
+        self.assertEqual(pine.default_socket_paths(28011, env, "linux"),
+                         ["/run/user/1000/pcsx2.sock", "/run/user/1000/app/net.pcsx2.PCSX2/pcsx2.sock",
+                          "/tmp/pcsx2.sock"])
+        self.assertEqual(pine.default_socket_paths(28012, {}, "linux"), ["/tmp/pcsx2.sock.28012"])
+        self.assertEqual(pine.default_socket_paths(28011, {"TMPDIR": "/var/tmp/x"}, "darwin"),
+                         ["/var/tmp/x/pcsx2.sock"])
+        self.assertEqual(pine.default_socket_paths(28011, env, "win32"), [])
+
+    @unittest.skipUnless(pine.unix_sockets_supported(), "no Unix sockets here")
+    def test_unix_socket_connect(self):
+        import os
+        import socket
+        import tempfile
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "pcsx2.sock")
+            server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            server.bind(path)
+            server.listen(1)
+            ram = bytearray(RAM_SIZE)
+            fake = FakePineSocket(ram, "SLUS-20733")
+
+            def serve():
+                conn, _ = server.accept()
+                with conn:
+                    while True:
+                        head = conn.recv(4)
+                        if not head:
+                            return
+                        size, = struct.unpack("<I", head)
+                        body = b""
+                        while len(body) < size - 4:
+                            body += conn.recv(size - 4 - len(body))
+                        fake.sendall(head + body)
+                        conn.sendall(bytes(fake.out))
+                        fake.out.clear()
+
+            threading.Thread(target=serve, daemon=True).start()
+            p = pine.Pine(socket_path=path)
+            p.connect()
+            self.assertEqual(p.endpoint, f"socket {path}")
+            self.assertEqual(p.game_id(), "SLUS-20733")
+            p.close()
+            server.close()
+
+    def test_explicit_socket_missing(self):
+        p = pine.Pine(socket_path="/nonexistent/pcsx2.sock")
+        with self.assertRaises(pine.PineError):
+            p.connect()
+
 
 class GameCheckTests(unittest.TestCase):
     def test_ok(self):

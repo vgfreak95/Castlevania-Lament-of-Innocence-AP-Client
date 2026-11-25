@@ -42,6 +42,12 @@ Double-click `lament_of_innocence.apworld`, or copy it into Archipelago's `custo
 The client connects to PCSX2 through PINE. Go to **Settings > Advanced**, enable **PINE** and leave
 the slot at **28011**.
 
+On Windows PINE is a local TCP port. On Linux and macOS (including the AppImage and Flatpak) it is a
+Unix socket, and the client finds it by itself: `pcsx2.sock` in `$XDG_RUNTIME_DIR` (or `/tmp`) on
+Linux, in `$TMPDIR` on macOS, or the Flatpak's folder under `$XDG_RUNTIME_DIR/app/net.pcsx2.PCSX2`.
+There's no need for socat. If yours is somewhere else, point the client at it with
+`/socket <path>` or `--pine-socket <path>`.
+
 ### 4. Create your player YAML
 
 In the Archipelago Launcher, use **Generate Template Options** or **Options Creator** (0.6.7 or above)
@@ -71,6 +77,7 @@ Extra commands in the client:
 | `/pcsx2`      | Shows whether the client is connected to PCSX2 and the game.        |
 | `/popups`     | Turns the in-game "sent item" popups on or off.                     |
 | `/slot 28011` | Changes the PINE slot, if you set PCSX2 to use a different one.     |
+| `/socket <path>` | Linux/macOS: use this PINE socket (`/socket auto` = find it).    |
 | `/map`        | Opens the 3D map tracker in your browser (see below).               |
 
 ### Map tracker
@@ -111,7 +118,8 @@ and the Vampire Killer.
 ## Troubleshooting
 
 - **The client can't connect to PCSX2.** Check that PINE is enabled with slot 28011 and that the
-  game is running. Type `/pcsx2` in the client to see the connection state.
+  game is running. Type `/pcsx2` in the client to see the connection state (it names the socket or
+  port it reached). On Linux/macOS, if PCSX2 keeps its socket somewhere unusual, use `/socket <path>`.
 - **Pickups give their normal items and no checks are sent.** The patch isn't active. Make sure
   `28270F7D.pnach` is in the `patches` folder and **Archipelago** is turned on in the game's
   Patches settings.
