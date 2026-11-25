@@ -95,8 +95,9 @@ straight away.
 
 ## Quality of life
 
-- `wolfs_foot_qol`: Wolf's Foot drains MP at half the normal rate (5 MP a second instead of 10), so
-  it lasts twice as long. The client turns it on every time it connects; after a console reset it
+- `wolfs_foot_qol`: how fast Wolf's Foot drains MP, as a percentage of the normal 10 MP a second:
+  `0` uses no MP at all, `50` drains half as fast (it lasts twice as long), `100` (the default) is
+  normal. The client turns it on every time it connects; after a console reset it
   drains at the normal rate until the client is connected again.
 
 ## Traps

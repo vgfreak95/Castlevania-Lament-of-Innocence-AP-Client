@@ -25,7 +25,7 @@ pnach = "ap"                    # the [pnach.*] that --install copies when none 
 # mailbox at 0xFC000 (src/pickup.c), message queue at 0xFD000 (src/msgbox.h), received-item notices at 0xFD800 (src/toast.h)
 [patch.pickup]
 title = "Archipelago Pickups"
-description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000 and get a small notice at the bottom right (top right when the minimap is there). Whip skills are learned from AP items (Basic Skills option: Quick Step and Perfect Guard can stay vanilla). Wolf's Foot QoL option: half the MP drain. Rinaldo no longer sells the plates, Mobius's Brooch or the Jade Mask (they're in the item pool). Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
+description = "Placed floor items and boss rewards become AP locations (no vanilla item, own message box); items from the AP client arrive at 0xFE000 and get a small notice at the bottom right (top right when the minimap is there). Whip skills are learned from AP items (Basic Skills option: Quick Step and Perfect Guard can stay vanilla). Wolf's Foot QoL option: MP drain from none to normal. Rinaldo no longer sells the plates, Mobius's Brooch or the Jade Mask (they're in the item pool). Events at 0xFC000, status at 0xFCF00 for the Lament of Innocence AP client over PINE."
 base = 0x000F9000                # code + .bss must end below the mailbox at 0xFC000
 sources = ["src/pickup.c", "src/msgbox.c", "src/toast.c", "src/stagekeys.c", "src/skills.c", "src/qol.c", "src/shop.c", "src/traps.c"]
 hooks = [

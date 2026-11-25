@@ -43,7 +43,14 @@ STATUS_KILL_REQ = STATUS + 28
 STATUS_AREA_LOCKS = STATUS + 32     # bit i = area i (items.py AREA_KEYS) needs its key
 STATUS_SKILL_VANILLA = STATUS + 36  # skills (src/skills.h bits) still learned the normal way
 STATUS_QOL = STATUS + 40            # quality-of-life options (src/qol.h bits)
-QOL_WOLFS_FOOT = 0x1
+QOL_WOLFS_FOOT = 0x1                # + the drain percent in bits 8-15 (src/qol.h)
+QOL_WOLFS_FOOT_SHIFT = 8
+
+
+def qol_wolfs_foot(percent: int) -> int:
+    """The QOL_* bits for Wolf's Foot draining `percent` % of the normal MP (100 = vanilla: none)."""
+    percent = max(0, min(100, int(percent)))
+    return 0 if percent >= 100 else QOL_WOLFS_FOOT | (percent << QOL_WOLFS_FOOT_SHIFT)
 
 # Progressive items (items.py PROGRESSIVE), by their items.json game_id: the nth one received
 # becomes the nth tier's game item ID (any beyond the last tier repeat the last).

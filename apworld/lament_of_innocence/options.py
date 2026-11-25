@@ -71,10 +71,13 @@ class ProgressivePlates(Toggle):
     display_name = "Progressive Plates"
 
 
-class WolfsFootQoL(Toggle):
-    """Wolf's Foot drains MP at half the normal rate (5 MP a second instead of 10), so it lasts
-    twice as long."""
+class WolfsFootQoL(Range):
+    """How fast Wolf's Foot drains MP, in percent of the normal rate (10 MP a second): 0 = it
+    uses no MP at all, 50 = half (it lasts twice as long), 100 = normal."""
     display_name = "Wolf's Foot QoL"
+    range_start = 0
+    range_end = 100
+    default = 100
 
 
 class TrapChance(Range):

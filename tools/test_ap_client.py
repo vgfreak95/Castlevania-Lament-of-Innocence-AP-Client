@@ -372,11 +372,14 @@ class StatusAndMessageTests(unittest.TestCase):
         game, _, iface, _ = make_session()
         self.assertEqual(gi.STATUS_QOL, gi.STATUS + 40)             # ap.h: after skill_vanilla
         self.assertEqual(gi.STATUS_STRUCT.size, 44)
-        iface.set_qol(gi.QOL_WOLFS_FOOT)
-        self.assertEqual(game.u32(gi.STATUS_QOL), 1)
+        iface.set_qol(gi.qol_wolfs_foot(50))
+        self.assertEqual(game.u32(gi.STATUS_QOL), 0x3201)          # bit 0 + 50% in bits 8-15
         game.u32(gi.STATUS_QOL, 0)                                 # console reset clears it
-        iface.set_qol(gi.QOL_WOLFS_FOOT)
-        self.assertEqual(game.u32(gi.STATUS_QOL), 1)
+        iface.set_qol(gi.qol_wolfs_foot(50))
+        self.assertEqual(game.u32(gi.STATUS_QOL), 0x3201)
+        self.assertEqual(gi.qol_wolfs_foot(0), 0x0001)             # no drain
+        self.assertEqual(gi.qol_wolfs_foot(100), 0)                # normal: vanilla
+        self.assertEqual(gi.qol_wolfs_foot(250), 0)                # clamped
         self.assertEqual(game.u32(gi.STATUS_SKILL_VANILLA), 0)     # neighbour untouched
 
     def test_progressive(self):

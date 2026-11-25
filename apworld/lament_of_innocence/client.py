@@ -21,7 +21,7 @@ from CommonClient import (ClientCommandProcessor, CommonContext, get_base_parser
 from NetUtils import ClientStatus, NetworkItem
 
 from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS, TORCHES
-from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, QOL_WOLFS_FOOT, GameMismatch,
+from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, qol_wolfs_foot, GameMismatch,
                              GameStatus, LoIInterface, TorchSpot, build_key_map,
                              resolve_progressive)
 from .mapshapes import MapShapeError
@@ -266,7 +266,7 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
         vanilla = BASIC_SKILLS_MASK \
             if ctx.slot_data.get("basic_skills", BASIC_SKILLS_VANILLA) == BASIC_SKILLS_VANILLA else 0
         await asyncio.to_thread(game.set_skill_vanilla, vanilla)
-        qol = QOL_WOLFS_FOOT if ctx.slot_data.get("wolfs_foot_qol") else 0
+        qol = qol_wolfs_foot(ctx.slot_data.get("wolfs_foot_qol", 100))
         await asyncio.to_thread(game.set_qol, qol)
         torch_keys = await asyncio.to_thread(game.sync_torches, ctx.torch_spots())
         # torches broken without an event we saw (while the client was away)
