@@ -1,11 +1,35 @@
 /* Archipelago traps, part of the Archipelago Pickups patch (see traps.h).
  *
  * The player update (0x460590) clears the per-frame player flags, runs the hit check (0x464238:
- * the attacks touching Leon's body, *(player + 0x2F4)) and then the state code, which moves Leon
- * to a new state (player +0x330) through the current state's transition table (0x20-byte entries
- * in the 0x755xxx-0x76Cxxx data: conditions, then the player flag at +0x14 and the target state
- * at +0x18). The trap replaces the jal of the hit check (@ 0x460714) with knock_hook, which runs
- * the check and then raises what an enemy hit would.
+ * the attacks touching Leon's body, *(player + 0x2F4)) and then the state machine (0x469598 on
+ * player +0x330), which moves Leon to a new state through the current state's transition table.
+ * Player flags are u16 words at player +0xC30; a flag mask is (word << 16) | bits (Player_SetFlag
+ * 0x461398 -> 0x46D988). Words 0-7 and 12-15 are cleared every frame, so a raised hit flag lives
+ * one frame: the state machine has to take it that frame or it is gone.
+ * State machine (player +0x330): +0x00 state, +0x04 state table (0x758BE8; +0x08 + state * 4 ->
+ * state def), +0x08 player index, +0x48 reset request: when set, the next run puts Leon in state
+ * 0 (idle, controllable) without evaluating any transition. Player_ResetState (0x462C18) sets it
+ * and zeroes the move speed (0x462090); the game calls it for events and doors. 0x461F70 returns
+ * the state. State def: +0x00 animation, +0x08 transition count, +0x0C transitions, 0x20 bytes
+ * each: +0x00 anim frame window (s16 hi, s16 lo; -1 = always), +0x04/+0x08 conditions, +0x0C
+ * player flag mask, +0x10 target state (s16, -1 = none), +0x12 callback (s16 index into the
+ * table at 0x73DD80; 30 = 0x46B380, which runs the damage handler 0x467178), +0x14 f32,
+ * +0x18/+0x1C callback args. The first entry that matches with a target wins.
+ * Hits: every controllable state (0x00-0x95 except a few) has "flag 0x10004 (hit) -> 0x97" (or
+ * -> 0x98 in the air, 0x96 for some), dispatcher states (no animation) that pick the reaction from
+ * the hit flags: 0x97: 0x11000 -> 0xAA (launch), 0x10400/0x10800 -> 0xA8/0xA9 (hurt), 0x18000 ->
+ * 0x9F, 0x20001 -> 0x9E (stagger), 0x50040 -> 0xA3, 0x50100 -> 0xA2; 0x98 (air): 0x11000 -> 0xB0.
+ * The hit-reaction states themselves have NO hit transition: the stagger recoveries 0xA0/0xA1,
+ * the flinches 0xA5-0xA9 and the whole knockback chain 0xAA (launch) -> 0xAB/0xAC (flying,
+ * landing), 0xAD (down, getting up: -> 0x04 or 0x00 from frame 0x0F/0x1E), 0xB0 (air launch),
+ * 0xB1-0xB5, 0xB7. So a hit raised while Leon is in one of them is dropped (this, not an
+ * invincibility timer, is what swallowed a second Knockback Trap: the damage reaction ran and
+ * raised 0x11000, nothing took it). 0xA2 paralyzed, 0xA3/0xA4 stoned, 0xB6 and 0xB8-0xBC (death)
+ * are left alone. The damage reaction's only other gate is player flag 0x90008, which turns any
+ * attack without flag 0x800 into 0x10080 (no reaction); the hit check's own gates (flag 0x50200,
+ * player +0x2D4, the +0x2C8 timer) are skipped by calling the reaction directly.
+ * The trap replaces the jal of the hit check (@ 0x460714) with knock_hook, which runs the check
+ * and then raises what an enemy hit would.
  *
  * Ailments: bits of g_PlayerStatus+0x2F4: 0x1 poison, 0x2 stone, 0x4 curse, 0x8 paralysis. Each
  * has an update (0x4770B8 poison, 0x477CC0 stone, 0x477730 curse, 0x4783A8 paralysis) that
@@ -30,6 +54,12 @@
  * coming at Leon from the front, flagged heavy (0x10) and launch (0x80, which raises 0x11000: the
  * launch state 0xAA), so he is smacked backwards across the room. With no flags it is a light hit
  * (0x10400/0x10800: the hurt state), which the ailment traps use.
+ * A made-up hit only fires from a state whose table takes the hit flag (fire_ready). From a
+ * hit-reaction state (above) the hook first calls Player_ResetState, so Leon is back in state 0
+ * the next frame and the hit lands from there: a Knockback Trap during a knockback launches him
+ * again. Not within KNOCK_MIN_FRAMES of a trap's own launch, so two traps arriving together
+ * still give two visible knockbacks. A knockback only counts once Leon is seen in the launch
+ * state (0xAA, 0xB0 in the air) the frame after; otherwise it is tried again, so none is lost.
  *
  * Hook (config.toml): jal knock_hook @ 0x460714. */
 #include "traps.h"
@@ -62,6 +92,20 @@
 #define KNOCK_ATTACK_ID    0x68
 #define KNOCK_FLAGS        (ATTACK_FLAG_HEAVY | ATTACK_FLAG_LAUNCH)
 #define KNOCK_MAX_PENDING  3
+#define KNOCK_MIN_FRAMES   40          /* a trap's launch runs this long before the next resets it */
+
+/* player state machine (see above) */
+#define PL_STATE           0x330
+#define PL_STATE_TABLE     0x334
+#define STATE_COUNT        0xBD
+#define SDEF_COUNT         0x08
+#define SDEF_TRANSITIONS   0x0C
+#define TR_SIZE            0x20
+#define TR_FLAG            0x0C
+#define TR_TARGET          0x10        /* s16 */
+#define HIT_FLAG           0x10004
+#define ST_LAUNCH          0xAA
+#define ST_AIR_LAUNCH      0xB0
 
 static const char *const names[TRAP_COUNT] = {
     "Paralysis Trap", "Curse Trap", "Stone Trap", "Knockback Trap", "Poison Trap",
@@ -70,10 +114,13 @@ static const char *const names[TRAP_COUNT] = {
 void PlayerHitCheck(int player, u8 *pl);                    /* 0x464238 */
 void Player_DamageReaction(int player, u8 *body, u8 *attack);  /* 0x464698 */
 void Player_GetFacing(int player, float *out);              /* 0x460C30: vec4, player +0x1B0 */
+void Player_ResetState(int player);                         /* 0x462C18: state 0 next run */
 
 /* state lives in .bss, which the pnach never writes */
 static u8 fake_attack[0x160] __attribute__((aligned(16)));
 static int knock_pending;           /* knockbacks still to do */
+static int knock_fired;             /* a knockback was raised last frame: check it took */
+static int knock_wait;              /* frames before a trap's launch may be reset */
 static u32 ailment_pending;         /* AILMENT_HIT_* flags of ailment traps received */
 static u32 ailment_active;          /* the ones being applied */
 static int ailment_frames;          /* frames left raising them */
@@ -122,12 +169,68 @@ static void knock_back(u8 *pl, u32 flags)
     Player_DamageReaction(0, body, fake_attack);
 }
 
+/* whether state `st`'s transition table takes the hit flag (ignores the frame windows) */
+static int takes_hit(u8 *pl, int st)
+{
+    u8 *table = *(u8 **)(pl + PL_STATE_TABLE);
+    u8 *def, *tr;
+    int n;
+
+    if (!table || st < 0 || st >= STATE_COUNT)
+        return 0;
+    def = *(u8 **)(table + 8 + st * 4);
+    if (!def)
+        return 0;
+    tr = *(u8 **)(def + SDEF_TRANSITIONS);
+    for (n = *(int *)(def + SDEF_COUNT); n > 0; n--, tr += TR_SIZE)
+        if (*(u32 *)(tr + TR_FLAG) == HIT_FLAG && *(short *)(tr + TR_TARGET) != -1)
+            return 1;
+    return 0;
+}
+
+/* the hit-reaction states that drop hits (stagger recovery, flinch, knockback; see above) */
+static int hit_reaction(int st)
+{
+    return (st >= 0xA0 && st <= 0xB7) && !(st >= 0xA2 && st <= 0xA4) && st != 0xB6;
+}
+
+/* 1 if a made-up hit would be taken now. From a hit-reaction state, asks the game to put Leon
+ * back in state 0 (taken this frame), so it fires the frame after. */
+static int fire_ready(u8 *pl)
+{
+    int st = *(int *)(pl + PL_STATE);
+
+    if (takes_hit(pl, st))
+        return 1;
+    if (hit_reaction(st) && knock_wait <= 0) {
+        Player_ResetState(0);
+        GamePrintf("[trap] reset from state %x\n", st);
+    }
+    return 0;
+}
+
 /* Replaces "jal PlayerHitCheck" in the player update (@ 0x460714). */
 void knock_hook(int player, u8 *pl)
 {
+    int st;
+
     PlayerHitCheck(player, pl);
-    if (player != 0 || Player_TestFlag(0, PLAYER_FLAG_DEAD))
+    if (player != 0)
+        return;
+    if (knock_wait > 0)
+        knock_wait--;
+    if (Player_TestFlag(0, PLAYER_FLAG_DEAD))
         return;                     /* wait: nothing while dead */
+    if (knock_fired) {
+        /* last frame's knockback: it counts if the state machine took it */
+        knock_fired = 0;
+        st = *(int *)(pl + PL_STATE);
+        if (st == ST_LAUNCH || st == ST_AIR_LAUNCH) {
+            knock_pending--;
+            knock_wait = KNOCK_MIN_FRAMES;
+            GamePrintf("[trap] knockback\n");
+        }
+    }
     if (ailment_frames > 0) {
         /* the hit's hurt state is running: raise the ailment's hit flags the way the damage
          * handler (0x467178) does from there, so its transition table starts the ailment */
@@ -143,6 +246,8 @@ void knock_hook(int player, u8 *pl)
     }
     if (ailment_pending && !(PS_AILMENTS & AILMENT_STONE)) {
         /* first a light hit with no damage, which puts Leon in the hurt state */
+        if (!fire_ready(pl))
+            return;
         ailment_active = ailment_pending;
         ailment_pending = 0;
         ailment_frames = AILMENT_FRAMES;
@@ -152,7 +257,8 @@ void knock_hook(int player, u8 *pl)
     }
     if (knock_pending <= 0 || (PS_AILMENTS & AILMENT_STONE))
         return;                     /* wait: no knockback while turned to stone */
-    knock_pending--;
+    if (!fire_ready(pl))
+        return;
     knock_back(pl, KNOCK_FLAGS);
-    GamePrintf("[trap] knockback\n");
+    knock_fired = 1;
 }

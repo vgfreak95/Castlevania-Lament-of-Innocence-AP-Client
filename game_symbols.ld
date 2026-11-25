@@ -73,5 +73,6 @@ Skill_CheckConditions = 0x0046F480;
 PlayerHitCheck       = 0x00464238;
 Player_DamageReaction = 0x00464698;
 Player_GetFacing     = 0x00460C30;
+Player_ResetState    = 0x00462C18;
 Torch_CreateFlame    = 0x00683788;
 Item_GetKind         = 0x006B7B10;
