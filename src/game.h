@@ -287,6 +287,11 @@ typedef struct {
 } TextStyle;
 void DrawText(const char *text, const TextStyle *style, int x, int y, int layer,
               u32 colour);
+/* 0x6B4D88: size of `text` laid out with `style` (scale included), in screen pixels. The game's
+ * fit-to-box text drawer (0x6B73D8) calls it with (text, style, 0, 0, &w, &h) and shrinks
+ * scale_x by max_w / w; 0x6B4E10 is a multi-line variant. Inside ^Crrggbbaa (lowercase hex,
+ * bytes r g b a) the colour replaces DrawText's for the glyphs that follow; ^c goes back. */
+void Text_Measure(const char *text, const TextStyle *style, int a2, int a3, int *w, int *h);
 
 #define RGBA(r, g, b, a)                                                       \
   ((u32)(r) | ((u32)(g) << 8) | ((u32)(b) << 16) | ((u32)(a) << 24))

@@ -6,7 +6,8 @@
  *   by torch_checks_tick below); it drops nothing.
  * - Everything else (candle/enemy drops, swapped sub-weapon) stays vanilla and is just logged.
  * - Items sent by the AP server arrive in a ring at 0xFE000 (written by the client) and are given
- *   one per frame with a "Received X from Y" message; the count given is kept in the save.
+ *   one per frame with a small "Received X from Y" notice at the bottom right (toast.c, no message
+ *   box; the pickup sound still plays); the count given is kept in the save.
  * Events go to a ring buffer at a fixed EE address, read over PINE by tools/pickup_client.py
  * (PINE only reads/writes memory, so the game can't push messages: we write, the client polls).
  * - Boss rewards (orbs, elemental whips) are AP locations too: game_key BOSS_KEY_BASE + reward index.
@@ -27,6 +28,7 @@
 #include "shop.h"
 #include "traps.h"
 #include "torches.h"
+#include "toast.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -365,8 +367,11 @@ typedef struct {
 
 /* a zeroed stand-in for a pickup object, so Item_OnPickup can apply any item exactly as if it
  * was picked up (max-ups, hearts, gold, inventory items, with sound). 16-byte aligned: the game
- * reads its position with 128-bit loads. */
-static u8 fake_obj[0x240] __attribute__((aligned(16)));   /* full object size */
+ * reads its position with 128-bit loads. Kept at a fixed address in the cave (0xFDC00-0xFDE40,
+ * after the received-item notices of toast.h) rather than in .bss: the patch's .bss must end
+ * below the mailbox at 0xFC000 and has no room for it. Zeroed before every use. */
+#define FAKE_OBJ_SIZE 0x240                     /* full object size */
+#define fake_obj ((u8 *)0x000FDC00)
 
 #define ITEMOBJ_PICKUP_CB      0x130   /* index into the on-pickup callback table @ 0x7389C8 */
 #define PICKUP_CB_NONE         2       /* table entry 2 is empty */
@@ -384,7 +389,7 @@ static int fake_pickup(int id, const float *pos)
 {
     int i;
 
-    for (i = 0; i < (int)sizeof(fake_obj); i++)
+    for (i = 0; i < FAKE_OBJ_SIZE; i++)
         fake_obj[i] = 0;
     if (pos)
         for (i = 0; i < 3; i++)
@@ -460,15 +465,14 @@ static void recv_tick(void)
     volatile RecvEntry *e;
     u32 applied = RECV_APPLIED;
     char sender[sizeof(e->sender)];
-    char text[MSGQ_TEXT];
     const char *name;
     int item, gold, i;
 
     q->applied = applied;              /* tell the client where this save is */
     if (q->magic != RECV_MAGIC || applied >= q->count)
         return;
-    if (!msgbox_game_idle() || MSGQ->head - MSGQ->tail >= MSGQ_SLOTS)
-        return;                        /* wait for plain gameplay (not mid-save) and room for the message */
+    if (!msgbox_game_idle() || toast_full())
+        return;                        /* wait for plain gameplay (not mid-save) and a free notice line */
     e = &q->ring[applied % RECV_SLOTS];
     if (e->index != applied)
         return;                        /* the client hasn't written this item yet */
@@ -485,14 +489,9 @@ static void recv_tick(void)
     name = skill_item(item) ? skill_name(item)
          : trap_item(item)  ? trap_name(item) : Item_GetNameText(item);
     GamePrintf("[recv] #%d item %02X %s from %s\n", applied, item, name, sender);
-    if (gold) {
+    if (gold)
         GamePrintf("[recv] inventory full: $%d instead\n", gold);
-        GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s\n(no room: $%d instead)",
-                    name, sender, gold);
-    } else {
-        GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s", name, sender);
-    }
-    msg_post(text);
+    toast_push(name, sender, gold);    /* toast.c: top-right notice, no message box */
 }
 
 /* ---- goal ---- */
@@ -599,6 +598,7 @@ void frame_end_hook(void)
     volatile ApStatus *st = AP_STATUS;
 
     pickups_left_draw();     /* before FrameEnd, like the game's own HUD update */
+    toast_frame();           /* received-item notices (toast.c), drawn here for the same reason */
     FrameEnd();
     if (st->magic != AP_STATUS_MAGIC) {      /* first frame after boot: clear stale RAM */
         st->goal = 0;

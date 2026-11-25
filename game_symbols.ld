@@ -13,6 +13,7 @@ GetMaxMP             = 0x00468BF0;
 AddMaxMP             = 0x00468C10;
 AddMP                = 0x00468CD0;
 DrawText             = 0x006B7290;
+Text_Measure         = 0x006B4D88;
 PadUpdate            = 0x00416438;
 GetText              = 0x004552C0;
 Item_GetNameText     = 0x0044BA30;

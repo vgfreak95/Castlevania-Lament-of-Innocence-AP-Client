@@ -23,9 +23,12 @@
  * Minimap Options page (hold L3, apmenu.c). Settings last until the console
  * resets. Hook: jal Player_UpdateStep @ 0x439EC8 (GameplayFrame case 0, skipped
  * while the world is frozen) draws the minimap; while the menu is open, the
- * page's frame callback draws it as a live preview. */
+ * page's frame callback draws it as a live preview.
+ * - In the bottom-right corner it tells the received-item notices (toast.h,
+ * drawn by the pickups patch, normally bottom right) to go top right. */
 #include "ap_locations.h"
 #include "apmenu.h"
+#include "toast.h"
 
 #define LAYER 1    /* the HUD text's layer */
 #define GS_Z 65000 /* as the screen fade */
@@ -1064,4 +1067,7 @@ AP_PAGE(minimap_options_page, 010) = {
 void minimap_hook(void) {
   Player_UpdateStep();
   minimap_draw(0);
+  settings_init();
+  if (set_corner == 2) /* bottom right: received-item notices go top right (toast.h) */
+    TOAST->use_top = 1;
 }

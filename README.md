@@ -61,7 +61,8 @@ In the Archipelago Launcher, use **Generate Template Options** or **Options Crea
 4. Start a **new game**.
 
 When you pick up a location's item or beat a boss, the check is sent. A message box shows what
-you found and who it belongs to. Items other players send you arrive in game with a message box.
+you found and who it belongs to. Items other players send you arrive in game with a small
+"Received ..." line in the bottom-right corner (top right when the minimap is in the bottom-right corner).
 
 Extra commands in the client:
 

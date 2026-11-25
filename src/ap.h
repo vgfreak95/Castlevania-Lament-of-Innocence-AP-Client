@@ -8,7 +8,8 @@
 
 #include "game.h"
 
-/* 0xFC000 event mailbox (pickup.c), 0xFD000 message queue (msgbox.h), 0xFE000 receive ring
+/* 0xFC000 event mailbox (pickup.c), 0xFD000 message queue (msgbox.h), 0xFD800 received-item
+ * notices (toast.h, game-only), 0xFDC00 fake pickup object (pickup.c, game-only), 0xFE000 receive ring
  * (pickup.c). This block sits between the mailbox (ends 0xFC810) and the message queue. */
 typedef struct {
     u32 magic;          /* AP_STATUS_MAGIC, written by pickup.c every frame */
