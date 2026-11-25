@@ -51,8 +51,11 @@ any other key, and are kept in your save.
 - `starting_area`: the area whose key you start with: `house_of_sacred_remains`,
   `anti_soul_mystery_lab`, `dark_palace_of_waterfalls`, `garden_forgotten_by_time` or
   `ghostly_theatre`. The default, `random`, picks one of the five.
-- `starting_area_keys` (1-5, default 1): how many area keys you start with. The `starting_area` key
-  is always one of them; the others are picked at random. With 5 you start with every key.
+- `starting_area_keys` (0-5, default 1): how many area keys you start with. The `starting_area` key
+  is always one of them; the others are picked at random. With 5 you start with every key. With 0
+  you start with none (`starting_area` isn't used): your first key comes from the checks open from
+  the start, in the Prelude's hub and the Prison of Eternal Torture (and their torches with Torch
+  Sanity), or from another world.
 - The keys you don't start with are shuffled into the item pool. They take the place of filler,
   not of any vanilla item.
 

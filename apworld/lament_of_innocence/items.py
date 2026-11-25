@@ -101,7 +101,9 @@ STARTING_ITEMS = ("Svarog Statue",)
 
 def pick_starting_area_keys(world: "LoIWorld") -> List[str]:
     """The area keys the slot starts with (Area Keys on): the Starting Area's, then random
-    others up to Starting Area Keys."""
+    others up to Starting Area Keys (0: none)."""
+    if world.options.starting_area_keys.value == 0:
+        return []
     keys = list(AREA_KEYS.values())
     first = keys[world.options.starting_area.value]   # "random" is resolved by Archipelago
     others = [k for k in keys if k != first]

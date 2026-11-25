@@ -26,7 +26,7 @@ class AreaKeys(DefaultOnToggle):
 
 class StartingArea(Choice):
     """With Area Keys: the area whose key you start with. random (the default) picks one of the
-    five."""
+    five. Not used when Starting Area Keys is 0."""
     display_name = "Starting Area"
     option_house_of_sacred_remains = 0
     option_anti_soul_mystery_lab = 1
@@ -38,9 +38,11 @@ class StartingArea(Choice):
 
 class StartingAreaKeys(Range):
     """With Area Keys: how many area keys you start with. The Starting Area's key is always one
-    of them; the others are picked at random."""
+    of them; the others are picked at random. 0: you start with no key at all, and the first one
+    has to come from the checks open from the start (the Prelude's hub and the Prison of Eternal
+    Torture, plus their torches with Torch Sanity) or from another world."""
     display_name = "Starting Area Keys"
-    range_start = 1
+    range_start = 0
     range_end = 5
     default = 1
 
