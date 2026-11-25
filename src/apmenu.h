@@ -23,7 +23,7 @@
 
 #include "game.h"
 
-#define AP_MENU_VERSION "0.3.1"
+#define AP_MENU_VERSION "0.5.0"
 #define APMENU_ROW_TEXT 64   /* size of the `out` buffers; GameSprintf doesn't check */
 
 typedef struct ApPage {

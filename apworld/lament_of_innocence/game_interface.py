@@ -187,8 +187,8 @@ class LoIInterface:
             raise GameMismatch(f"PCSX2 is running {gid}, not Lament of Innocence ({GAME_ID})")
         magic, version = struct.unpack("<2I", self.mem.read(STATUS, 8))
         if magic != STATUS_MAGIC:
-            raise GameMismatch("the Archipelago Pickups patch isn't running (no status block at "
-                               f"{STATUS:#x}); install the pnach and enable its cheats, then boot "
+            raise GameMismatch("the Archipelago patch isn't running (no status block at "
+                               f"{STATUS:#x}); install the pnach and turn on its Archipelago patch, then boot "
                                "the game past the title screen")
         if version != PROTOCOL_VERSION:
             raise GameMismatch(f"the pickup patch speaks protocol {version}, this client "

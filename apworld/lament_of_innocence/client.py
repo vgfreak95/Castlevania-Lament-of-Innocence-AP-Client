@@ -1,6 +1,6 @@
 """Archipelago client for Castlevania: Lament of Innocence on PCSX2.
 
-Needs the "Archipelago Pickups" pnach (src/pickup.c) on the vanilla SLUS-20733 ISO and PINE
+Needs the "Archipelago" pnach patch (src/pickup.c and friends) on the vanilla SLUS-20733 ISO and PINE
 enabled in PCSX2 (Settings > Advanced > PINE, slot 28011). The RAM protocol is in
 game_interface.py.
 

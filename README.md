@@ -28,12 +28,12 @@ Double-click `lament_of_innocence.apworld`, or copy it into Archipelago's `custo
 1. Copy `28270F7D.pnach` into PCSX2's `patches` folder. On Windows this is usually
    `Documents\PCSX2\patches`. To find it, use **Tools > Open Data Directory** in PCSX2.
 2. In PCSX2, right-click the game in your library, open **Properties > Patches** and turn on
-   **Archipelago Pickups**.
-3. Optional: turn on **Archipelago Menu and Minimap** for a small map of the rooms you've visited
-   in the top-right corner. Rooms that still have unchecked Archipelago pickups get an orange
-   marker. Tap **L3** to show or hide it; hold **L3** for about 3 seconds to open the Archipelago
+   **Archipelago**. This one patch does everything: pickups and torches as checks, received
+   items, traps, the minimap and the Archipelago Menu.
+3. The minimap is a small map of the rooms you've visited in the top-right corner. Rooms that
+   still have unchecked Archipelago pickups get an orange marker. Tap **L3** to show or hide it; hold **L3** for about 3 seconds to open the Archipelago
    Menu's **Minimap Options** (zoom, size, corner, opacity, room shapes and which markers to
-   show). Minimap settings last until you reset the console. This patch also adds the **Savewarp
+   show). Minimap settings last until you reset the console. The patch also adds the **Savewarp
    Ticket** to Rinaldo's shop (2000 gold, one per game): use it in a save room to warp to any save
    room you've been in. It's never used up.
 
@@ -55,7 +55,7 @@ In the Archipelago Launcher, use **Generate Template Options** or **Options Crea
 
 ## Playing
 
-1. Start PCSX2 and boot the game. The Archipelago Pickups patch must be on.
+1. Start PCSX2 and boot the game. The Archipelago patch must be on.
 2. In the Archipelago Launcher, open **Lament of Innocence Client**.
 3. Connect to the server: `/connect address:port`.
 4. Start a **new game**.
@@ -111,8 +111,8 @@ and the Vampire Killer.
 - **The client can't connect to PCSX2.** Check that PINE is enabled with slot 28011 and that the
   game is running. Type `/pcsx2` in the client to see the connection state.
 - **Pickups give their normal items and no checks are sent.** The patch isn't active. Make sure
-  `28270F7D.pnach` is in the `patches` folder and **Archipelago Pickups** is turned on in the
-  game's Patches settings.
+  `28270F7D.pnach` is in the `patches` folder and **Archipelago** is turned on in the game's
+  Patches settings.
 - **The game isn't recognised.** Only the US version (SLUS-20733) is supported.
 
 ## Building from source

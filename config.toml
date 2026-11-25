@@ -81,8 +81,11 @@ hooks = [
 ]
 
 # ---- pnach files ----
-# Each [pnach.<name>] is written to <dir>/<crc>.pnach: the "Debug printf" group, then its patches.
+# Each [pnach.<name>] is written to <dir>/<crc>.pnach: the "Debug printf" group, then its patches
+# (one group each, or all in one with group = { title, description }).
 
 [pnach.ap]
 dir = "build"
 patches = ["pickup", "minimap", "torches"]
+# one group for users to turn on (each [patch.*] title/description is then only a comment)
+group = { title = "Archipelago", description = "Castlevania: Lament of Innocence Archipelago patch for the AP client (PINE slot 28011): pickups, boss rewards, torches (Torch Sanity, red flame) become AP locations, received items show a small notice in the bottom-right corner, plus traps, area keys, whip skills and QoL options. Top-right minimap of the visited rooms (tap L3 to show/hide, hold L3 for the Archipelago Menu) and the Savewarp Ticket in Rinaldo's shop." }

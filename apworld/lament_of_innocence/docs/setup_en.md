@@ -6,7 +6,7 @@
 - [PCSX2](https://pcsx2.net/) 2.x with PINE enabled (Settings > Advanced > PINE, slot 28011).
 - A US copy of Castlevania: Lament of Innocence (SLUS-20733), as an ISO.
 - The Archipelago pnach patch for the game (`28270F7D.pnach`), installed in PCSX2's `patches`
-  folder, with the **Archipelago Pickups** patch turned on in the game's Properties > Patches.
+  folder, with the **Archipelago** patch turned on in the game's Properties > Patches.
 
 ## Installation
 

@@ -135,8 +135,7 @@ and to whom.
 
 ## Archipelago Menu and Minimap
 
-The optional **Archipelago Menu and Minimap** patch (turn it on in PCSX2 next to Archipelago
-Pickups) draws a small map
+The **Archipelago** patch draws a small map
 in a corner of the screen. It shows the rooms you've visited on Leon's current floor, with an arrow
 for Leon pointing the way he faces.
 
@@ -168,7 +167,7 @@ Settings last until you reset the console.
 
 ## Savewarp Ticket
 
-The **Archipelago Menu and Minimap** patch also adds a new item, the **Savewarp Ticket**: a red
+The **Archipelago** patch also adds a new item, the **Savewarp Ticket**: a red
 Memorial Ticket that warps you between save rooms.
 
 - **Where to get it**: buy it from Rinaldo's shop (Items tab) for 2000 gold. It isn't in the
