@@ -21,7 +21,6 @@
 #include "game.h"
 #include "msgbox.h"
 #include "ap.h"
-#include "ap_locations.h"
 #include "stagekeys.h"
 #include "skills.h"
 #include "qol.h"
@@ -560,35 +559,6 @@ static void deathlink_tick(void)
     }
 }
 
-/* ---- pickups left in this room ----
- * Bottom-right text: AP pickup locations (ap_locations.h) in the current room whose collected flag
- * isn't set yet. Hidden while the world is frozen (events, message boxes), while the quick item
- * ring is open (it doesn't freeze the world, so that needs its own check) and when the debug menu's
- * Info HUD page switches it off (AP_STATUS->hud_off). */
-#define LEFT_X       70         /* screen-centre relative, like the debug menu's info HUD */
-#define LEFT_Y       185
-#define LEFT_LAYER   1
-#define LEFT_COLOUR  RGBA(0x80, 0x80, 0x80, 0x80)
-
-static const TextStyle left_style = {8, 0x80808080, 0, 0x100, 0x100, 0};
-
-static void pickups_left_draw(void)
-{
-    int room_key, i, left = 0;
-    char text[32];
-
-    if (AP_STATUS->hud_off || IsWorldFrozen() || ITEM_RING_OPEN())
-        return;
-    room_key = GetRoomKey(CUR_STAGE, CUR_ROOM);
-    for (i = 0; i < AP_PICKUP_COUNT; i++) {
-        int key = ap_pickup_keys[i];
-        if (key / 64 == room_key && !GetRoomItemFlag(room_key, key % 64))
-            left++;
-    }
-    GameSprintf(text, "Pickups left: %d", left);
-    DrawText(text, &left_style, LEFT_X, LEFT_Y, LEFT_LAYER, LEFT_COLOUR);
-}
-
 /* ---- per frame ---- */
 
 /* replaces "jal FrameEnd" @ 0x439F08, the last call of GameplayFrame case 0. Unlike the debug
@@ -597,7 +567,6 @@ void frame_end_hook(void)
 {
     volatile ApStatus *st = AP_STATUS;
 
-    pickups_left_draw();     /* before FrameEnd, like the game's own HUD update */
     toast_frame();           /* received-item notices (toast.c), drawn here for the same reason */
     FrameEnd();
     if (st->magic != AP_STATUS_MAGIC) {      /* first frame after boot: clear stale RAM */

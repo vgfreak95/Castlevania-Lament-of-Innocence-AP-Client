@@ -17,7 +17,7 @@ typedef struct {
     u32 goal;           /* GOAL_* bits, sticky until the console resets */
     u32 scan;           /* AP_SCAN_ACTIVE while the debug menu's location scan runs */
     u32 client_ticks;   /* bumped by the PC client on every poll; lets the game know one is there */
-    u32 hud_off;        /* nonzero: hide the "pickups left" counter (debug menu, Info HUD page) */
+    u32 hud_off;        /* nonzero: hide the "Checks left" counter (minimap.c) (debug menu, Info HUD page) */
     u32 deaths;         /* DeathLink, written by the game: Leon's deaths since boot, not counting
                            ones it caused for a received DeathLink */
     u32 kill_req;       /* DeathLink, written by the client: bumped for every received death; the
