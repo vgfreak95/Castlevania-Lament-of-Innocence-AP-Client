@@ -8,7 +8,8 @@
 
 #include "game.h"
 
-/* 0xFC000 event mailbox (pickup.c), 0xFD000 message queue (msgbox.h), 0xFE000 receive ring
+/* 0xFC000 event mailbox (pickup.c), 0xFD000 message queue (msgbox.h), 0xFD800 received-item
+ * notices (toast.h, game-only), 0xFDC00 fake pickup object (pickup.c, game-only), 0xFE000 receive ring
  * (pickup.c). This block sits between the mailbox (ends 0xFC810) and the message queue. */
 typedef struct {
     u32 magic;          /* AP_STATUS_MAGIC, written by pickup.c every frame */
@@ -16,7 +17,7 @@ typedef struct {
     u32 goal;           /* GOAL_* bits, sticky until the console resets */
     u32 scan;           /* AP_SCAN_ACTIVE while the debug menu's location scan runs */
     u32 client_ticks;   /* bumped by the PC client on every poll; lets the game know one is there */
-    u32 hud_off;        /* nonzero: hide the "pickups left" counter (debug menu, Info HUD page) */
+    u32 hud_off;        /* nonzero: hide the "Checks left" counter (minimap.c) (debug menu, Info HUD page) */
     u32 deaths;         /* DeathLink, written by the game: Leon's deaths since boot, not counting
                            ones it caused for a received DeathLink */
     u32 kill_req;       /* DeathLink, written by the client: bumped for every received death; the
@@ -34,7 +35,7 @@ typedef struct {
 
 #define AP_STATUS ((volatile ApStatus *)0x000FCF00)
 #define AP_STATUS_MAGIC     0x54535041   /* "APST" */
-#define AP_PROTOCOL_VERSION 6
+#define AP_PROTOCOL_VERSION 8   /* 7: torch table (torches.h); 8: shop table (apshop.h) */
 #define AP_SCAN_ACTIVE      0x4E414353   /* "SCAN" */
 
 #define GOAL_WALTER 0x1     /* Walter beaten: went from his room straight into Death's */
@@ -50,5 +51,9 @@ typedef struct {
  * g_BossRewardTable @ 0x7AF590 (ISO offset 0x44F590, the randomizer's boss locations). Their AP
  * game_key is BOSS_KEY_BASE + index; placed items use room_key * 64 + flag (< 416 * 64). */
 #define BOSS_KEY_BASE 0x8000
+
+/* Other game_keys: torches TORCH_KEY_BASE 0x10000 + n (torches.h), Shop Sanity slots
+ * SHOP_KEY_BASE 0x20000 + slot (apshop.h). Fixed tables in the cave: torch table 0xC0000
+ * (torches.h), shop table 0xB4000-0xB7820 (apshop.h). */
 
 #endif

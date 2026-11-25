@@ -3,10 +3,12 @@
 ## Required software
 
 - [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.4 or newer.
-- [PCSX2](https://pcsx2.net/) 2.x with PINE enabled (Settings > Advanced > PINE, slot 28011).
+- [PCSX2](https://pcsx2.net/) 2.x with PINE enabled (Settings > Advanced > PINE, slot 28011). On
+  Linux and macOS the client connects to PINE's Unix socket by itself (AppImage and Flatpak too);
+  use `/socket <path>` if it's somewhere unusual.
 - A US copy of Castlevania: Lament of Innocence (SLUS-20733), as an ISO.
 - The Archipelago pnach patch for the game (`28270F7D.pnach`), installed in PCSX2's `patches`
-  folder, with the **Archipelago Pickups** patch turned on in the game's Properties > Patches.
+  folder, with the **Archipelago** patch turned on in the game's Properties > Patches.
 
 ## Installation
 

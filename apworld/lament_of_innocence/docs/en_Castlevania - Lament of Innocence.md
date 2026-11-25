@@ -6,6 +6,7 @@ Every unique floor pickup (112 of them, from the Prelude to the Prison of Eterna
 reward of nine bosses (the five area bosses, the three Elementals and the Forgotten One) become
 Archipelago locations. Picking one up, or beating the boss, sends a check; the item you receive
 comes from the multiworld.
+With [Shop Sanity](#shop-sanity), Rinaldo's shop sells locations too.
 
 The game runs on an unmodified ISO with runtime patches, so every vanilla gate is still there:
 the key doors, the e Tablet door, the Curtain Time Bell, the Unlock Jewel door, the Pagoda seal and
@@ -30,6 +31,42 @@ The new [Savewarp Ticket](#savewarp-ticket) isn't shuffled: it's only sold in Ri
 Rinaldo no longer sells the items of his that are in the pool: the four plates, Mobius's Brooch and
 the Jade Mask only come from the multiworld. You can still sell them to him.
 
+The Svarog Statue is shuffled like any other relic, and you don't start with it. The Prelude's
+tutorial Golden Knight, which normally only takes damage from the Svarog Statue's flames, can be
+beaten with the whip or a sub-weapon. Getting the Svarog Statue no longer equips it, so the relic
+you have equipped stays.
+
+## Shop Sanity
+
+With `shop_sanity` on (the default is off), Rinaldo's shop sells Archipelago locations. Each one
+holds any item, from this world or another (progression included), and can be bought once.
+
+- Rinaldo's stock has 35 rows. Each of his 15 vanilla shop items has its own option, on by
+  default, that keeps it on sale at its vanilla price: `shop_potion`, `shop_high_potion`,
+  `shop_serum`, `shop_uncurse_potion`, `shop_magical_ticket`, `shop_memorial_ticket`,
+  `shop_diamond`, `shop_ruby`, `shop_sapphire`, `shop_opal`, `shop_turquoise`, `shop_zircon`,
+  `shop_music_box`, `shop_sacrificial_doll`, `shop_white_bishop`. Every row not kept is a
+  location: 20 locations with all 15 items kept, up to 35 with none.
+- The locations are named `Rinaldo's Shop: Item 1`, `Item 2` and so on (location group `Shop`).
+  The Buy list shows 20 of them at a time, in that order; the next ones appear as you buy earlier
+  ones.
+- `shop_prices` sets what the locations cost:
+  - `custom`: a random price from 10 gold up to `shop_custom_price` each (2-10000, default 1000;
+    below 10, every location costs exactly that).
+  - `affordable`: a random price from 10 to 500 gold each.
+  - `normal` (the default): a random price from 500 to 2000 gold each.
+  - `unaffordable`: a random price from 1000 to 5000 gold each.
+
+  Every price is a multiple of 10 gold (2178 becomes 2180). The spoiler log lists every
+  location's price.
+- Gold isn't part of the logic: a shop location only needs the shop, which is open from the
+  start. You may have to farm gold before you can buy what you need.
+- Each row shows what it holds and for whom. A bought location stays sold out: the client tells
+  the game which ones are checked every time it connects, so they stay off the list after a
+  reload or a console reset too.
+- The shop locations add the same number of filler items (or traps, with `trap_chance`) to the
+  item pool.
+
 ## Area Keys
 
 With `area_keys` on (the default), each of the five areas you reach from the floating rocks in the
@@ -51,8 +88,11 @@ any other key, and are kept in your save.
 - `starting_area`: the area whose key you start with: `house_of_sacred_remains`,
   `anti_soul_mystery_lab`, `dark_palace_of_waterfalls`, `garden_forgotten_by_time` or
   `ghostly_theatre`. The default, `random`, picks one of the five.
-- `starting_area_keys` (1-5, default 1): how many area keys you start with. The `starting_area` key
-  is always one of them; the others are picked at random. With 5 you start with every key.
+- `starting_area_keys` (0-5, default 1): how many area keys you start with. The `starting_area` key
+  is always one of them; the others are picked at random. With 5 you start with every key. With 0
+  you start with none (`starting_area` isn't used): your first key comes from the checks open from
+  the start, in the Prelude's hub and the Prison of Eternal Torture (and their torches with Torch
+  Sanity), or from another world.
 - The keys you don't start with are shuffled into the item pool. They take the place of filler,
   not of any vanilla item.
 
@@ -95,8 +135,9 @@ straight away.
 
 ## Quality of life
 
-- `wolfs_foot_qol`: Wolf's Foot drains MP at half the normal rate (5 MP a second instead of 10), so
-  it lasts twice as long. The client turns it on every time it connects; after a console reset it
+- `wolfs_foot_qol`: how fast Wolf's Foot drains MP, as a percentage of the normal 10 MP a second:
+  `0` uses no MP at all, `50` drains half as fast (it lasts twice as long), `100` (the default) is
+  normal. The client turns it on every time it connects; after a console reset it
   drains at the normal rate until the client is connected again.
 
 ## Traps
@@ -135,8 +176,7 @@ and to whom.
 
 ## Archipelago Menu and Minimap
 
-The optional **Archipelago Menu and Minimap** patch (turn it on in PCSX2 next to Archipelago
-Pickups) draws a small map
+The **Archipelago** patch draws a small map
 in a corner of the screen. It shows the rooms you've visited on Leon's current floor, with an arrow
 for Leon pointing the way he faces.
 
@@ -168,7 +208,7 @@ Settings last until you reset the console.
 
 ## Savewarp Ticket
 
-The **Archipelago Menu and Minimap** patch also adds a new item, the **Savewarp Ticket**: a red
+The **Archipelago** patch also adds a new item, the **Savewarp Ticket**: a red
 Memorial Ticket that warps you between save rooms.
 
 - **Where to get it**: buy it from Rinaldo's shop (Items tab) for 2000 gold. It isn't in the
@@ -187,4 +227,4 @@ Memorial Ticket that warps you between save rooms.
 
 ## Not implemented yet
 
-Torch sanity and enemy-drop sanity are declared as options but do nothing yet.
+Enemy-drop sanity is declared as an option but does nothing yet.

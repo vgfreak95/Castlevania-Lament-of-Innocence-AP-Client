@@ -1,6 +1,8 @@
 """
 Turn build/<name>.bin files into PCSX2 pnaches: one 32-bit write per word plus the hook patches.
-Each patch becomes its own [group], so it can be switched on and off in PCSX2.
+Each patch becomes its own [group], so it can be switched on and off in PCSX2, unless the
+[pnach.*] has a `group = { title, description }`: then all its patches go in that one group, so
+users turn on one patch (PCSX2 has no line limit; only ps2rd codes for real hardware do).
 The patches and which pnach they go in come from config.toml.
 
 usage: py -3 tools/bin2pnach.py [--config config.toml] [pnach ...]   (default: every [pnach.*])
@@ -39,7 +41,8 @@ def read_map(path):
     return syms
 
 
-def patch_section(name, patch, build_dir, author):
+def patch_lines(name, patch, build_dir):
+    """The comment and patch= lines of one patch binary and its hooks."""
     syms = read_map(os.path.join(build_dir, name + '.map'))
 
     # where the patch's code starts (the patch's base in config.toml)
@@ -57,20 +60,24 @@ def patch_section(name, patch, build_dir, author):
         # jal by default; jump = true writes a j instead (takes over a whole function at its entry)
         opcode = 0x08000000 if h.get('jump') else 0x0C000000
         hooks.append((h['site'], h['original'], opcode | (syms[h['function']] >> 2), h['function']))
+    # pokes: plain word writes into the game's code (e.g. a nop), no function of ours
+    pokes = [(p['site'], p['original'], p['value']) for p in patch.get('pokes', [])]
 
-    lines = [
-        f"[{patch['title']}]",
-        f'author={author}',
-        f"description={patch['description']}",
-        f'// {len(code)} bytes at {base:#010x}',
-    ]
+    lines = [f"// {patch['title']}: {len(code)} bytes at {base:#010x}"]
     lines += [f'// hook {site:#010x}: {orig:08X} -> {jal:08X} ({fn})' for site, orig, jal, fn in hooks]
     lines += [f'patch=1,EE,{base + 4 * i:08X},word,{w:08X}' for i, w in enumerate(words)]
     lines += [f'patch=1,EE,{site:08X},word,{jal:08X}' for site, _, jal, _ in hooks]
+    lines += [f'// poke {site:#010x}: {orig:08X} -> {value:08X}' for site, orig, value in pokes]
+    lines += [f'patch=1,EE,{site:08X},word,{value:08X}' for site, _, value in pokes]
 
     print(f"{patch['title']}: {len(words)} words at {base:#x}, " +
           ', '.join(f'{fn}={syms[fn]:#x}' for _, _, _, fn in hooks))
-    return '\n'.join(lines) + '\n'
+    return lines
+
+
+def group_section(title, description, author, body):
+    """One PCSX2 [group]: switched on and off as a whole."""
+    return '\n'.join([f'[{title}]', f'author={author}', f'description={description}'] + body) + '\n'
 
 
 def write_pnach(config, pnach_name, build_dir='build'):
@@ -78,8 +85,17 @@ def write_pnach(config, pnach_name, build_dir='build'):
     pnach = config['pnach'][pnach_name]
     author = config['build']['author']
     sections = [PRINTF_SECTION.format(author=author)]
-    for name in pnach['patches']:
-        sections.append(patch_section(name, config['patch'][name], build_dir, author))
+    group = pnach.get('group')
+    if group:
+        body = []
+        for name in pnach['patches']:
+            body += patch_lines(name, config['patch'][name], build_dir)
+        sections.append(group_section(group['title'], group['description'], author, body))
+    else:
+        for name in pnach['patches']:
+            patch = config['patch'][name]
+            sections.append(group_section(patch['title'], patch['description'], author,
+                                          patch_lines(name, patch, build_dir)))
 
     os.makedirs(pnach['dir'], exist_ok=True)
     out = os.path.join(pnach['dir'], config['game']['crc'] + '.pnach')

@@ -28,12 +28,12 @@ Double-click `lament_of_innocence.apworld`, or copy it into Archipelago's `custo
 1. Copy `28270F7D.pnach` into PCSX2's `patches` folder. On Windows this is usually
    `Documents\PCSX2\patches`. To find it, use **Tools > Open Data Directory** in PCSX2.
 2. In PCSX2, right-click the game in your library, open **Properties > Patches** and turn on
-   **Archipelago Pickups**.
-3. Optional: turn on **Archipelago Menu and Minimap** for a small map of the rooms you've visited
-   in the top-right corner. Rooms that still have unchecked Archipelago pickups get an orange
-   marker. Tap **L3** to show or hide it; hold **L3** for about 3 seconds to open the Archipelago
+   **Archipelago**. This one patch does everything: pickups and torches as checks, received
+   items, traps, the minimap and the Archipelago Menu.
+3. The minimap is a small map of the rooms you've visited in the top-right corner. Rooms that
+   still have unchecked Archipelago pickups get an orange marker. Tap **L3** to show or hide it; hold **L3** for about 3 seconds to open the Archipelago
    Menu's **Minimap Options** (zoom, size, corner, opacity, room shapes and which markers to
-   show). Minimap settings last until you reset the console. This patch also adds the **Savewarp
+   show). Minimap settings last until you reset the console. The patch also adds the **Savewarp
    Ticket** to Rinaldo's shop (2000 gold, one per game): use it in a save room to warp to any save
    room you've been in. It's never used up.
 
@@ -41,6 +41,12 @@ Double-click `lament_of_innocence.apworld`, or copy it into Archipelago's `custo
 
 The client connects to PCSX2 through PINE. Go to **Settings > Advanced**, enable **PINE** and leave
 the slot at **28011**.
+
+On Windows PINE is a local TCP port. On Linux and macOS (including the AppImage and Flatpak) it is a
+Unix socket, and the client finds it by itself: `pcsx2.sock` in `$XDG_RUNTIME_DIR` (or `/tmp`) on
+Linux, in `$TMPDIR` on macOS, or the Flatpak's folder under `$XDG_RUNTIME_DIR/app/net.pcsx2.PCSX2`.
+There's no need for socat. If yours is somewhere else, point the client at it with
+`/socket <path>` or `--pine-socket <path>`.
 
 ### 4. Create your player YAML
 
@@ -55,13 +61,14 @@ In the Archipelago Launcher, use **Generate Template Options** or **Options Crea
 
 ## Playing
 
-1. Start PCSX2 and boot the game. The Archipelago Pickups patch must be on.
+1. Start PCSX2 and boot the game. The Archipelago patch must be on.
 2. In the Archipelago Launcher, open **Lament of Innocence Client**.
 3. Connect to the server: `/connect address:port`.
 4. Start a **new game**.
 
 When you pick up a location's item or beat a boss, the check is sent. A message box shows what
-you found and who it belongs to. Items other players send you arrive in game with a message box.
+you found and who it belongs to. Items other players send you arrive in game with a small
+"Received ..." line in the bottom-right corner (top right when the minimap is in the bottom-right corner).
 
 Extra commands in the client:
 
@@ -70,11 +77,35 @@ Extra commands in the client:
 | `/pcsx2`      | Shows whether the client is connected to PCSX2 and the game.        |
 | `/popups`     | Turns the in-game "sent item" popups on or off.                     |
 | `/slot 28011` | Changes the PINE slot, if you set PCSX2 to use a different one.     |
+| `/socket <path>` | Linux/macOS: use this PINE socket (`/socket auto` = find it).    |
+| `/map`        | Opens the 3D map tracker in your browser (see below).               |
+
+### Map tracker
+
+The client's **Map** tab shows a top-down map of the castle. It shows the rooms you've visited,
+where Leon is and which way he faces, and the doors you've been through. Rooms whose Archipelago
+pickups are all checked turn green. Rooms with pickups left get an orange marker, and so do
+unchecked torches with Torch Sanity on. Click a room to list its locations. Drag to pan, scroll to
+zoom, double-click (or **Fit**) to see the whole area. **Follow** keeps Leon centred and switches
+areas with him. By default Leon's floor is drawn on top and the other floors are dimmed; the floor
+menu can show all floors or just one.
+
+`/map` opens the same map in 3D in your browser instead. Drag to orbit, right-drag to pan, scroll
+to zoom; **F** toggles following Leon, **T** is a top view. The page needs internet access the
+first time: its 3D library (three.js) loads from a CDN.
+
+The map uses the client's own connection to PCSX2, so it runs alongside the game with nothing
+else to set up. Each area's map is read from your game the first time Leon is in it while the
+client is connected, and is kept on your PC, so nothing from the game ships with the apworld.
 
 ## What's randomized
 
 - **Locations:** 112 unique floor pickups, from the Prelude to the Prison of Eternal Torture,
   plus the rewards of 9 bosses: the five area bosses, the three Elementals and the Forgotten One.
+  With **Torch Sanity** on, every breakable torch is a location too: an unchecked torch burns
+  red, and breaking it checks the location (it drops nothing).
+  With **Shop Sanity** on, Rinaldo's shop sells 20 to 35 locations (one for every row that
+  isn't kept as a vanilla shop item), each bought once.
 - **Items:** whips (except the starting Whip of Alchemy), the five keys, tablets, Dragon Crest,
   Unlock Jewel, Curtain Time Bell, all seven orbs, armour, accessories and relics (including
   shop items), HP/Heart/MP Max Ups and filler (potions, hearts, money, food).
@@ -87,10 +118,11 @@ and the Vampire Killer.
 ## Troubleshooting
 
 - **The client can't connect to PCSX2.** Check that PINE is enabled with slot 28011 and that the
-  game is running. Type `/pcsx2` in the client to see the connection state.
+  game is running. Type `/pcsx2` in the client to see the connection state (it names the socket or
+  port it reached). On Linux/macOS, if PCSX2 keeps its socket somewhere unusual, use `/socket <path>`.
 - **Pickups give their normal items and no checks are sent.** The patch isn't active. Make sure
-  `28270F7D.pnach` is in the `patches` folder and **Archipelago Pickups** is turned on in the
-  game's Patches settings.
+  `28270F7D.pnach` is in the `patches` folder and **Archipelago** is turned on in the game's
+  Patches settings.
 - **The game isn't recognised.** Only the US version (SLUS-20733) is supported.
 
 ## Building from source

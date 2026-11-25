@@ -20,3 +20,13 @@ def _load(name: str) -> List[Dict[str, Any]]:
 EXTRA_BASE_ID = 207340000
 LOCATIONS: List[Dict[str, Any]] = _load("locations.json") + _load("extra_locations.json")
 ITEMS: List[Dict[str, Any]] = _load("items.json")
+
+# torches.json: the Torch Sanity locations, from the debug menu's torch scan
+# (tools/gen_torch_locations.py): ap_id = TORCH_BASE_ID + n, game_key = TORCH_KEY_BASE + n. The
+# game finds a torch by room_key and spawn position (x_bits, z_bits; src/torches.c). Only used
+# when the option is on, so they are kept apart from LOCATIONS.
+TORCH_BASE_ID = 207350000
+TORCH_KEY_BASE = 0x10000
+TORCHES: List[Dict[str, Any]] = _load("torches.json")
+
+# Shop Sanity locations: ap_id = SHOP_BASE_ID (207380000) + slot, no data file (shop.py)

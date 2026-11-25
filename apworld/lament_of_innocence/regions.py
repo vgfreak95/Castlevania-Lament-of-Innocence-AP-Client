@@ -8,10 +8,12 @@ from typing import TYPE_CHECKING, Callable, Dict, Optional
 
 from BaseClasses import CollectionState, LocationProgressType, Region
 
-from .data_loader import LOCATIONS
+from .data_loader import LOCATIONS, TORCHES
 from .items import AREA_KEYS, create_event
 from .locations import AREA_BOSSES, BOSS_REGION, LoILocation, boss_event_item
-from .rules import DEATH_EVENT, WALTER_EVENT, boss_rule, location_rule, pagoda_seal, walter_stairs
+from .shop import SHOP_BASE_ID, SHOP_REGION, kept_vanilla_items, shop_location_name
+from .rules import (DEATH_EVENT, WALTER_EVENT, boss_rule, location_rule, pagoda_seal, torch_rule,
+                    walter_stairs)
 
 if TYPE_CHECKING:
     from . import LoIWorld
@@ -62,6 +64,31 @@ def create_regions(world: "LoIWorld") -> None:
             # about, so they only get filler until that's checked
             loc.progress_type = LocationProgressType.EXCLUDED
         regions[rec["region"]].locations.append(loc)
+
+    # Torch Sanity: every non-weapon torch (src/torches.c finds it by room and position)
+    torch_mode = world.options.torch_sanity
+    if torch_mode != torch_mode.option_off:
+        for rec in TORCHES:
+            loc = LoILocation(player, rec["name"], rec["ap_id"], regions[rec["region"]])
+            if torch_mode == torch_mode.option_filler_only:
+                loc.progress_type = LocationProgressType.EXCLUDED
+            else:
+                rule = torch_rule(rec, player)
+                if rule is not None:
+                    loc.access_rule = rule
+            regions[rec["region"]].locations.append(loc)
+
+    # Shop Sanity: slot i of Rinaldo's shop. Gold isn't modelled, so a slot only needs the shop.
+    # VERIFY: Rinaldo's cottage is reachable from the Prelude's hub from the start, with nothing
+    # needed (and stays open for the whole game)?
+    # A slot never holds this world's own copy of an item the shop still sells (e.g. a Potion
+    # while Shop Sells Potion is on): the fill gives it something else.
+    kept = kept_vanilla_items(world)
+    for i in range(world.shop_slot_count):
+        loc = LoILocation(player, shop_location_name(i), SHOP_BASE_ID + i, regions[SHOP_REGION])
+        if kept:
+            loc.item_rule = lambda item, kept=kept: not (item.player == player and item.name in kept)
+        regions[SHOP_REGION].locations.append(loc)
 
     # boss-defeat events for the Pagoda seal
     for boss in AREA_BOSSES:

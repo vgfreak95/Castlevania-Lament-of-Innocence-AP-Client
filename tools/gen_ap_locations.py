@@ -1,6 +1,6 @@
 """
 Write src/ap_locations.h from the AP world's location data: the game_key (room_key * 64 + flag) of
-every placed-pickup location, sorted, for the "pickups left in this room" counter in src/pickup.c.
+every placed-pickup location, sorted, for the "Checks left" counter and room markers in src/minimap.c.
 Run by tools/build.py before compiling, so the header follows locations.json / extra_locations.json.
 """
 import json

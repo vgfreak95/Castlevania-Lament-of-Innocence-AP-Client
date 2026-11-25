@@ -287,6 +287,11 @@ typedef struct {
 } TextStyle;
 void DrawText(const char *text, const TextStyle *style, int x, int y, int layer,
               u32 colour);
+/* 0x6B4D88: size of `text` laid out with `style` (scale included), in screen pixels. The game's
+ * fit-to-box text drawer (0x6B73D8) calls it with (text, style, 0, 0, &w, &h) and shrinks
+ * scale_x by max_w / w; 0x6B4E10 is a multi-line variant. Inside ^Crrggbbaa (lowercase hex,
+ * bytes r g b a) the colour replaces DrawText's for the glyphs that follow; ^c goes back. */
+void Text_Measure(const char *text, const TextStyle *style, int a2, int a3, int *w, int *h);
 
 #define RGBA(r, g, b, a)                                                       \
   ((u32)(r) | ((u32)(g) << 8) | ((u32)(b) << 16) | ((u32)(a) << 24))
@@ -400,5 +405,38 @@ int WarpRock_PlayerOn(u8 *rock);        /* 0x67CDA8 */
 /* text bank (GetText 0x4552C0): *(0xB61108) + 0x10 = char *[text ID]; 1111 entries in retail */
 #define TEXT_BANK (*(u8 *volatile *)0x00B61108)
 #define TEXT_BANK_TABLE 0x10
+
+/* ---- torches (candles; src/torches.c) ----
+ * Room actor records (0x80 bytes, Actor_SpawnFromRecord? 0x4EA088) call the class spawn function
+ * with (actor, rec+0x10, rec+0x14, extra); the torch classes (0x683F00, 0x683FC0, ...) end in
+ * Torch_Create 0x683E28(actor, flame, kind, item): item = rec+0x10 (0 = small heart 0x93; 0 in
+ * Joachim mode), Candle_Create 0x6A4468 stores it, then the flame is made with
+ * Torch_CreateFlame(actor, flame + (item is a sub-weapon 0xAA-0xAF), kind) (jal @ 0x683ED0).
+ * Candle actor (actor pool 0xB653D0, 128 x 0x280; update fn +0x240 = 0x6A42B0): +0x24 flame
+ * effect handle (from Torch_CreateFlame, *handle = emitter), +0x2C break effect, +0x30 kind,
+ * +0x34 item, +0x100 position (float[4]).
+ * On break, Candle_Update? 0x6A3F70 drops +0x34 through ItemObj_Spawn (jal @ 0x6A41D4, actor in
+ * s2), after turning items >= 0xB0 into a small heart, an item equal to a 0-9 roll into a big
+ * heart (0x94) and hearts into 0xA2/0xA3 when hearts are full. The result is only tested for
+ * NULL (bne v0 @ 0x6A41DC): NULL calls Item_SpawnHeartActor? 0x44B530(item, pos, rot, 0), which
+ * makes a heart-kind item an actor instead; nothing else uses it (v0 is overwritten next call).
+ * Flame types (0x794F58, 0x10 each): float height, size, size2, u8 RGBA (0 normal 52 3B FF,
+ * 1 sub-weapon EA FE 4A). The emitter (0x69D190) keeps the RGBA at +0x14 and draws three sprite
+ * prims at +0xA0, +0x110, +0x180 whose RGBAQ (four ints, prim +0x40) is set once at spawn, so a
+ * write there recolours the flame for good (alpha flickers, RGB stays). Confirmed live. */
+#define ACTOR_POOL        0x00B653D0
+#define ACTOR_COUNT       0x80
+#define ACTOR_SIZE        0x280
+#define ACTOR_UPDATE      0x240
+#define CANDLE_UPDATE_FN  0x006A42B0
+#define CANDLE_FLAME      0x24
+#define CANDLE_KIND       0x30
+#define CANDLE_ITEM       0x34
+#define CANDLE_POS        0x100
+#define FLAME_EMITTER_RGBA 0x14
+#define FLAME_PRIM_COLOUR(emitter, n) ((volatile int *)((emitter) + 0xA0 + (n) * 0x70 + 0x40))
+u8 **Torch_CreateFlame(u8 *actor, int flame, int kind);  /* 0x683788: returns the effect handle */
+int Item_GetKind(int id);                                /* 0x6B7B10 */
+#define ITEM_KIND_HEART   6
 
 #endif

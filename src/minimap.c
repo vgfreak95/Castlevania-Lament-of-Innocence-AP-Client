@@ -23,9 +23,22 @@
  * Minimap Options page (hold L3, apmenu.c). Settings last until the console
  * resets. Hook: jal Player_UpdateStep @ 0x439EC8 (GameplayFrame case 0, skipped
  * while the world is frozen) draws the minimap; while the menu is open, the
- * page's frame callback draws it as a live preview. */
+ * page's frame callback draws it as a live preview.
+ * - "Checks left: N" (checks_draw): the AP locations in the current room still
+ * unchecked, placed pickups (ap_locations.h) plus, with Torch Sanity, torches
+ * (the torch table, torches.h). Half-size text just past the panel's inner edge
+ * (below it in a top corner, above it in a bottom one), aligned with the
+ * panel's outer side, so it moves with the minimap; with the minimap hidden it
+ * takes the panel's place in that corner. Hidden while the world is frozen
+ * (the hook doesn't run), the item ring is open, the Archipelago Menu is up,
+ * or the debug menu's Info HUD page switches it off (AP_STATUS->hud_off).
+ * - In the bottom-right corner it tells the received-item notices (toast.h,
+ * drawn by the pickups patch, normally bottom right) to go top right. */
+#include "ap.h"
 #include "ap_locations.h"
 #include "apmenu.h"
+#include "toast.h"
+#include "torches.h"
 
 #define LAYER 1    /* the HUD text's layer */
 #define GS_Z 65000 /* as the screen fade */
@@ -97,6 +110,8 @@ static void settings_init(void) {
   set_opacity = 3;
   settings_ready = 1;
 }
+
+static int map_drawn; /* minimap_draw drew the panel this frame */
 
 /* panel and clip rectangle for this frame */
 static float panel_x0, panel_y0, panel_x1, panel_y1, panel_cx, panel_cy,
@@ -896,6 +911,7 @@ static void minimap_draw(int preview) {
     return;
 
   layout();
+  map_drawn = 1;
   clip_panel();
   world_to_map(here, PLAYER_POS[0], PLAYER_POS[2], &cx, &cz);
   floor = (signed char)here[PIECE_FLOOR];
@@ -1060,8 +1076,58 @@ AP_PAGE(minimap_options_page, 010) = {
 
 /* ---- hooks ---- */
 
+/* ---- checks left in this room ---- */
+
+#define CHECKS_SCALE 0x80 /* half the HUD text size */
+#define CHECKS_LINE_H ((CHECKS_SCALE * 20) >> 8) /* font ~18 px at 0x100 */
+#define CHECKS_GAP 4      /* pixels between the panel and the text */
+
+static const TextStyle checks_style = {8, 0x80808080, 0, CHECKS_SCALE,
+                                       CHECKS_SCALE, 0};
+
+static int checks_left(void) {
+  volatile TorchTable *t = TORCH_TABLE;
+  int key = GetRoomKey(CUR_STAGE, CUR_ROOM), left = 0, i, n;
+
+  for (i = 0; i < AP_PICKUP_COUNT; i++) {
+    int k = ap_pickup_keys[i];
+    if (k / 64 == key && !GetRoomItemFlag(key, k % 64))
+      left++;
+  }
+  if (t->magic == TORCH_TABLE_MAGIC) { /* written by the client: Torch Sanity on */
+    n = t->count < TORCH_TABLE_MAX ? (int)t->count : TORCH_TABLE_MAX;
+    for (i = 0; i < n; i++)
+      if (t->entry[i].room_key == key && !(t->entry[i].flags & TF_CHECKED))
+        left++;
+  }
+  return left;
+}
+
+static void checks_draw(void) {
+  int right = set_corner == 0 || set_corner == 2, bottom = set_corner >= 2;
+  int x, y, w = 0, h;
+  char text[32];
+
+  if (AP_STATUS->hud_off || ITEM_RING_OPEN() || apmenu_game_busy())
+    return;
+  layout();
+  if (bottom)
+    y = (map_drawn ? (int)panel_y0 - CHECKS_GAP : (int)panel_y1) - CHECKS_LINE_H;
+  else
+    y = map_drawn ? (int)panel_y1 + CHECKS_GAP : (int)panel_y0;
+  GameSprintf(text, "Checks left: %d", checks_left());
+  Text_Measure(text, &checks_style, 0, 0, &w, &h);
+  x = right ? (int)panel_x1 - w : (int)panel_x0;
+  DrawText(text, &checks_style, x, y, LAYER, RGBA(0x80, 0x80, 0x80, 0x80));
+}
+
 /* replaces "jal Player_UpdateStep" @ 0x439EC8 */
 void minimap_hook(void) {
   Player_UpdateStep();
+  map_drawn = 0;
   minimap_draw(0);
+  settings_init();
+  checks_draw();
+  if (set_corner == 2) /* bottom right: received-item notices go top right (toast.h) */
+    TOAST->use_top = 1;
 }

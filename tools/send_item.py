@@ -15,6 +15,7 @@ RECV_MAGIC = 0x56434552         # "RECV"
 RECV_SLOTS = 16
 HEADER = struct.Struct('<4I')   # magic, count, applied, reserved
 ENTRY = struct.Struct('<Ii24s') # index, item, sender
+SLOT_NAME_MAX = 16              # Archipelago's slot name limit
 
 
 def main():
@@ -23,6 +24,9 @@ def main():
     ap.add_argument('sender', nargs='?', default='Player2')
     ap.add_argument('--slot', type=int, default=28011)
     args = ap.parse_args()
+    if len(args.sender) > SLOT_NAME_MAX:
+        raise SystemExit(f'sender {args.sender!r} is longer than {SLOT_NAME_MAX} characters '
+                         '(the Archipelago slot name limit)')
 
     pine = Pine(args.slot)
     magic, count, applied, _ = HEADER.unpack(pine.read(RECVQ, HEADER.size))

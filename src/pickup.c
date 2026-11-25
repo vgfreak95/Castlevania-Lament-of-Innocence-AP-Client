@@ -2,9 +2,13 @@
  * - Placed floor items with a collected flag are AP *locations*: picking one up gives nothing,
  *   reports "location N checked" and shows our own message box instead of the "Obtained" window.
  *   Location ID = GetRoomKey(stage, room) * 64 + collected-flag index (0-63 per room).
+ * - Torch Sanity (torches.c): breaking a red torch checks its location (TORCH_CHECKS, reported
+ *   by torch_checks_tick below); it drops nothing.
+ * - Shop Sanity (apshop.c): a bought AP shop slot is reported by shop_checks_tick below.
  * - Everything else (candle/enemy drops, swapped sub-weapon) stays vanilla and is just logged.
  * - Items sent by the AP server arrive in a ring at 0xFE000 (written by the client) and are given
- *   one per frame with a "Received X from Y" message; the count given is kept in the save.
+ *   one per frame with a small "Received X from Y" notice at the bottom right (toast.c, no message
+ *   box; the pickup sound still plays); the count given is kept in the save.
  * Events go to a ring buffer at a fixed EE address, read over PINE by tools/pickup_client.py
  * (PINE only reads/writes memory, so the game can't push messages: we write, the client polls).
  * - Boss rewards (orbs, elemental whips) are AP locations too: game_key BOSS_KEY_BASE + reward index.
@@ -18,12 +22,14 @@
 #include "game.h"
 #include "msgbox.h"
 #include "ap.h"
-#include "ap_locations.h"
 #include "stagekeys.h"
 #include "skills.h"
 #include "qol.h"
 #include "shop.h"
 #include "traps.h"
+#include "torches.h"
+#include "toast.h"
+#include "apshop.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -66,18 +72,29 @@ static void copy_text(volatile char *dst, const char *src, int size)
     dst[i] = '\0';
 }
 
+/* name (or description) of an event's item: SHOP_EVENT_ID + n = Shop Sanity slot n (apshop.h) */
+static const char *event_text(int id, int desc)
+{
+    if (id >= SHOP_EVENT_ID && id < SHOP_EVENT_ID + SHOP_SLOTS_MAX) {
+        volatile ShopSlot *s = &SHOP_TABLE->slot[id - SHOP_EVENT_ID];
+        return desc ? (const char *)s->desc : (const char *)s->name;
+    }
+    return desc ? Item_GetDescText(id) : Item_GetNameText(id);
+}
+
 static void post_event(int kind, int id, int location)
 {
     volatile PickupMailbox *mb = MAILBOX;
     u32 seq = mb->magic == MAILBOX_MAGIC ? mb->write_seq : 0;
     volatile PickupEvent *ev = &mb->ev[seq % MAILBOX_SLOTS];
+    const char *name = event_text(id, 0);
 
     ev->seq = seq;
     ev->kind = kind;
     ev->id = id;
     ev->location = location;
-    copy_text(ev->name, Item_GetNameText(id), sizeof(ev->name));
-    copy_text(ev->desc, Item_GetDescText(id), sizeof(ev->desc));
+    copy_text(ev->name, name, sizeof(ev->name));
+    copy_text(ev->desc, event_text(id, 1), sizeof(ev->desc));
 
     mb->slot_count = MAILBOX_SLOTS;
     mb->slot_size = sizeof(PickupEvent);
@@ -85,9 +102,9 @@ static void post_event(int kind, int id, int location)
     mb->write_seq = seq + 1;    /* last: the client only reads events below write_seq */
 
     if (kind == EV_LOCATION)
-        GamePrintf("[pickup] #%d location %d (vanilla item %02X %s)\n", seq, location, id, Item_GetNameText(id));
+        GamePrintf("[pickup] #%d location %d (vanilla item %02X %s)\n", seq, location, id, name);
     else
-        GamePrintf("[pickup] #%d item %02X %s\n", seq, id, Item_GetNameText(id));
+        GamePrintf("[pickup] #%d item %02X %s\n", seq, id, name);
 }
 
 /* ---- spawn side ---- */
@@ -270,23 +287,30 @@ static int client_active(void)
     return client_seen_ticks != 0 && client_idle_frames < CLIENT_TIMEOUT;
 }
 
+/* tells the client location `location` (vanilla item `vanilla`) was checked; our own message
+ * when no client is watching */
+static void report_location(int vanilla, int location)
+{
+    char text[MSGQ_TEXT];
+
+    post_event(EV_LOCATION, vanilla, location);
+    if (!client_active()) {
+        GameSprintf(text, "^C80ff8080AP Location^c\nLocation %d checked\n(was: %s)",
+                    location, event_text(vanilla, 0));
+        msg_post(text);
+    }
+}
+
 /* takes `obj` as an AP location: nothing is given, the client is told */
 static void take_location(u8 *obj, int location)
 {
     int vanilla = *(int *)(obj + ITEMOBJ_ID);
-    char text[MSGQ_TEXT];
 
     /* run the normal pickup with an item that gives nothing: keeps the sound and effect */
     *(int *)(obj + ITEMOBJ_ID) = ITEM_ID_NO_EFFECT;
     Item_OnPickup(obj);
     *(int *)(obj + ITEMOBJ_ID) = vanilla;
-
-    post_event(EV_LOCATION, vanilla, location);
-    if (!client_active()) {
-        GameSprintf(text, "^C80ff8080AP Location^c\nLocation %d checked\n(was: %s)",
-                    location, Item_GetNameText(vanilla));
-        msg_post(text);
-    }
+    report_location(vanilla, location);
 }
 
 static int location_pickup(u8 *obj, u8 *actor)
@@ -355,8 +379,11 @@ typedef struct {
 
 /* a zeroed stand-in for a pickup object, so Item_OnPickup can apply any item exactly as if it
  * was picked up (max-ups, hearts, gold, inventory items, with sound). 16-byte aligned: the game
- * reads its position with 128-bit loads. */
-static u8 fake_obj[0x240] __attribute__((aligned(16)));   /* full object size */
+ * reads its position with 128-bit loads. Kept at a fixed address in the cave (0xFDC00-0xFDE40,
+ * after the received-item notices of toast.h) rather than in .bss: the patch's .bss must end
+ * below the mailbox at 0xFC000 and has no room for it. Zeroed before every use. */
+#define FAKE_OBJ_SIZE 0x240                     /* full object size */
+#define fake_obj ((u8 *)0x000FDC00)
 
 #define ITEMOBJ_PICKUP_CB      0x130   /* index into the on-pickup callback table @ 0x7389C8 */
 #define PICKUP_CB_NONE         2       /* table entry 2 is empty */
@@ -368,6 +395,21 @@ static u8 fake_obj[0x240] __attribute__((aligned(16)));   /* full object size */
 #define FULL_GOLD_MIN       10
 #define FULL_GOLD_MAX       5000
 #define FULL_GOLD_DEFAULT   50
+
+/* runs Item_OnPickup for item `id` on fake_obj, at `pos` (float[3]) or the origin */
+static int fake_pickup(int id, const float *pos)
+{
+    int i;
+
+    for (i = 0; i < FAKE_OBJ_SIZE; i++)
+        fake_obj[i] = 0;
+    if (pos)
+        for (i = 0; i < 3; i++)
+            ((float *)(fake_obj + ITEMOBJ_POS))[i] = pos[i];
+    *(int *)(fake_obj + ITEMOBJ_ID) = id;
+    *(int *)(fake_obj + ITEMOBJ_PICKUP_CB) = PICKUP_CB_NONE;
+    return Item_OnPickup(fake_obj);
+}
 
 /* gold given instead of an item that doesn't fit in the inventory */
 static int full_inventory_gold(int id)
@@ -384,7 +426,7 @@ static int full_inventory_gold(int id)
  * was full: Item_OnPickup leaves such an item on the floor, and there is no floor here). */
 static int give_item(int id)
 {
-    int i, gold;
+    int gold;
 
     if (id >= 0xAA && id <= 0xAF) {    /* sub-weapon: equip it (no old one dropped on the floor) */
         SetSubWeapon(id, GetActiveOrb());
@@ -398,15 +440,52 @@ static int give_item(int id)
         trap_give(id);
         return 0;
     }
-    for (i = 0; i < (int)sizeof(fake_obj); i++)
-        fake_obj[i] = 0;
-    *(int *)(fake_obj + ITEMOBJ_ID) = id;
-    *(int *)(fake_obj + ITEMOBJ_PICKUP_CB) = PICKUP_CB_NONE;
-    if (Item_OnPickup(fake_obj))
+    if (fake_pickup(id, 0))
         return 0;
     gold = full_inventory_gold(id);
     AddGold(gold);
     return gold;
+}
+
+/* ---- Torch Sanity ----
+ * A red torch that breaks queues its check in TORCH_CHECKS (torches.c, its own patch, can't call
+ * us); reported here like a pickup location, with the pickup sound where the drop would have been. */
+static void torch_checks_tick(void)
+{
+    volatile TorchChecks *c = TORCH_CHECKS;
+    volatile TorchCheck *k;
+    float pos[3];
+    int n;
+
+    if (c->magic != TORCH_CHECKS_MAGIC)
+        return;
+    if (c->head - c->tail > TORCH_CHECKS_MAX)   /* torches.c resets a ring in that state */
+        return;
+    while (c->tail != c->head) {
+        k = &c->check[c->tail % TORCH_CHECKS_MAX];
+        for (n = 0; n < 3; n++)
+            pos[n] = k->pos[n];
+        fake_pickup(ITEM_ID_NO_EFFECT, pos);
+        report_location(k->item, k->game_key);
+        c->tail = c->tail + 1;
+    }
+}
+
+/* ---- Shop Sanity ----
+ * A bought AP shop slot (apshop.c, Minimap patch) has its `report` word set; reported here. */
+static void shop_checks_tick(void)
+{
+    volatile ShopTable *t = SHOP_TABLE;
+    int n, i;
+
+    if (t->magic != SHOP_TABLE_MAGIC)
+        return;
+    n = t->count < SHOP_SLOTS_MAX ? (int)t->count : SHOP_SLOTS_MAX;
+    for (i = 0; i < n; i++)
+        if (t->slot[i].report) {
+            t->slot[i].report = 0;
+            report_location(SHOP_EVENT_ID + i, t->slot[i].game_key);
+        }
 }
 
 static void recv_tick(void)
@@ -415,15 +494,14 @@ static void recv_tick(void)
     volatile RecvEntry *e;
     u32 applied = RECV_APPLIED;
     char sender[sizeof(e->sender)];
-    char text[MSGQ_TEXT];
     const char *name;
     int item, gold, i;
 
     q->applied = applied;              /* tell the client where this save is */
     if (q->magic != RECV_MAGIC || applied >= q->count)
         return;
-    if (!msgbox_game_idle() || MSGQ->head - MSGQ->tail >= MSGQ_SLOTS)
-        return;                        /* wait for plain gameplay (not mid-save) and room for the message */
+    if (!msgbox_game_idle() || toast_full())
+        return;                        /* wait for plain gameplay (not mid-save) and a free notice line */
     e = &q->ring[applied % RECV_SLOTS];
     if (e->index != applied)
         return;                        /* the client hasn't written this item yet */
@@ -440,14 +518,9 @@ static void recv_tick(void)
     name = skill_item(item) ? skill_name(item)
          : trap_item(item)  ? trap_name(item) : Item_GetNameText(item);
     GamePrintf("[recv] #%d item %02X %s from %s\n", applied, item, name, sender);
-    if (gold) {
+    if (gold)
         GamePrintf("[recv] inventory full: $%d instead\n", gold);
-        GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s\n(no room: $%d instead)",
-                    name, sender, gold);
-    } else {
-        GameSprintf(text, "^C80ff8080Received^c\n%s\nfrom %s", name, sender);
-    }
-    msg_post(text);
+    toast_push(name, sender, gold);    /* toast.c: top-right notice, no message box */
 }
 
 /* ---- goal ---- */
@@ -516,35 +589,6 @@ static void deathlink_tick(void)
     }
 }
 
-/* ---- pickups left in this room ----
- * Bottom-right text: AP pickup locations (ap_locations.h) in the current room whose collected flag
- * isn't set yet. Hidden while the world is frozen (events, message boxes), while the quick item
- * ring is open (it doesn't freeze the world, so that needs its own check) and when the debug menu's
- * Info HUD page switches it off (AP_STATUS->hud_off). */
-#define LEFT_X       70         /* screen-centre relative, like the debug menu's info HUD */
-#define LEFT_Y       185
-#define LEFT_LAYER   1
-#define LEFT_COLOUR  RGBA(0x80, 0x80, 0x80, 0x80)
-
-static const TextStyle left_style = {8, 0x80808080, 0, 0x100, 0x100, 0};
-
-static void pickups_left_draw(void)
-{
-    int room_key, i, left = 0;
-    char text[32];
-
-    if (AP_STATUS->hud_off || IsWorldFrozen() || ITEM_RING_OPEN())
-        return;
-    room_key = GetRoomKey(CUR_STAGE, CUR_ROOM);
-    for (i = 0; i < AP_PICKUP_COUNT; i++) {
-        int key = ap_pickup_keys[i];
-        if (key / 64 == room_key && !GetRoomItemFlag(room_key, key % 64))
-            left++;
-    }
-    GameSprintf(text, "Pickups left: %d", left);
-    DrawText(text, &left_style, LEFT_X, LEFT_Y, LEFT_LAYER, LEFT_COLOUR);
-}
-
 /* ---- per frame ---- */
 
 /* replaces "jal FrameEnd" @ 0x439F08, the last call of GameplayFrame case 0. Unlike the debug
@@ -553,7 +597,7 @@ void frame_end_hook(void)
 {
     volatile ApStatus *st = AP_STATUS;
 
-    pickups_left_draw();     /* before FrameEnd, like the game's own HUD update */
+    toast_frame();           /* received-item notices (toast.c), drawn here for the same reason */
     FrameEnd();
     if (st->magic != AP_STATUS_MAGIC) {      /* first frame after boot: clear stale RAM */
         st->goal = 0;
@@ -578,6 +622,8 @@ void frame_end_hook(void)
     qol_frame();
     shop_frame();
     stagekeys_frame();       /* before recv_tick: received area keys need their item records */
+    torch_checks_tick();
+    shop_checks_tick();
     recv_tick();
     msgbox_tick();
 }

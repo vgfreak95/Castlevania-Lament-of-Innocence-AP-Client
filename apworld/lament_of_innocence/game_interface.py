@@ -6,6 +6,14 @@ patch (src/pickup.c, src/msgbox.h, src/ap.h), spoken over PINE.
 - Message queue @ 0xFD000: the client may post popups ("Sent X to Y").
 - Receive ring @ 0xFE000: the client writes the server's items; the game gives them in order and
   keeps how many it has given (`applied`) in the save.
+- Torch table @ 0xC0000 (src/torches.h, Torch Sanity): the client lists the slot's torch
+  locations (room key, position, game_key, checked flag); the "Archipelago Torches" patch makes
+  the unchecked ones burn red, and breaking one sets its checked flag and reports the location
+  through the event mailbox (it drops nothing).
+- Shop table @ 0xB4000 (src/apshop.h, Shop Sanity): the client lists which vanilla shop items stay
+  on sale and the slot's AP shop slots (game_key, price, look, row name, description, checked
+  flag); Rinaldo sells the unchecked ones, and buying one sets its checked flag and reports the
+  location through the event mailbox (it gives nothing).
 
 No Archipelago imports, so tools/test_ap_client.py can run it against an in-memory fake.
 Every address and layout here must match the C side.
@@ -33,13 +41,20 @@ STATUS = 0x000FCF00
 # area_locks (client), skill_vanilla (client), qol (client)
 STATUS_STRUCT = struct.Struct("<11I")
 STATUS_MAGIC = 0x54535041           # "APST"
-PROTOCOL_VERSION = 6
+PROTOCOL_VERSION = 8                # 7: torch table; 8: shop table
 STATUS_CLIENT_TICKS = STATUS + 16
 STATUS_KILL_REQ = STATUS + 28
 STATUS_AREA_LOCKS = STATUS + 32     # bit i = area i (items.py AREA_KEYS) needs its key
 STATUS_SKILL_VANILLA = STATUS + 36  # skills (src/skills.h bits) still learned the normal way
 STATUS_QOL = STATUS + 40            # quality-of-life options (src/qol.h bits)
-QOL_WOLFS_FOOT = 0x1
+QOL_WOLFS_FOOT = 0x1                # + the drain percent in bits 8-15 (src/qol.h)
+QOL_WOLFS_FOOT_SHIFT = 8
+
+
+def qol_wolfs_foot(percent: int) -> int:
+    """The QOL_* bits for Wolf's Foot draining `percent` % of the normal MP (100 = vanilla: none)."""
+    percent = max(0, min(100, int(percent)))
+    return 0 if percent >= 100 else QOL_WOLFS_FOOT | (percent << QOL_WOLFS_FOOT_SHIFT)
 
 # Progressive items (items.py PROGRESSIVE), by their items.json game_id: the nth one received
 # becomes the nth tier's game item ID (any beyond the last tier repeat the last).
@@ -79,6 +94,46 @@ RECV_HEADER = struct.Struct("<4I")   # magic, count, applied, reserved
 RECV_ENTRY = struct.Struct("<Ii24s")  # index, item, sender (cp932, NUL-terminated)
 SENDER_BYTES = 23
 
+# ---- torch table (torches.h) ----
+TORCH_TABLE = 0x000C0000
+TORCH_TABLE_MAGIC = 0x48435254       # "TRCH"
+TORCH_TABLE_MAX = 1536
+TORCH_HEADER = struct.Struct("<4I")  # magic, count, checked_seq, reserved
+TORCH_ENTRY = struct.Struct("<HHIIII")  # room_key, reserved (0), x_bits, z_bits, game_key, flags
+TORCH_FLAGS_OFFSET = 16              # of flags in an entry
+TF_CHECKED = 0x1
+TORCH_VERIFY_POLLS = 30              # re-read the whole table this often (save states, resets)
+
+# ---- shop table (apshop.h) ----
+SHOP_TABLE = 0x000B4000
+SHOP_TABLE_MAGIC = 0x504F4853        # "SHOP"
+SHOP_SLOTS_MAX = 64                  # AP shop slots the table holds
+SHOP_SHOWN_MAX = 20                  # of them on the Buy list at once (item IDs the shop accepts)
+SHOP_HEADER = struct.Struct("<8I")   # magic, count, vanilla, checked_seq, reserved x4
+SHOP_NAME_BYTES = 32
+SHOP_DESC_BYTES = 160
+# game_key, price, look, checked, report (game), reserved x3, name, desc
+SHOP_SLOT = struct.Struct(f"<8I{SHOP_NAME_BYTES}s{SHOP_DESC_BYTES}s")
+SHOP_CHECKED_OFFSET = 12             # of checked in a slot
+SHOP_KEY_BASE = 0x20000              # AP shop slot i: game_key SHOP_KEY_BASE + i
+SHOP_EVENT_ID = 0x100                # EV_LOCATION item field for shop slot i: SHOP_EVENT_ID + i
+SHOP_PRICE_MIN, SHOP_PRICE_MAX = 2, 30000   # the game clamps prices to this
+SHOP_LOOK_FILLER, SHOP_LOOK_USEFUL, SHOP_LOOK_PROGRESSION = 0, 1, 2   # Turquoise/Sapphire/Ruby
+SHOP_VERIFY_POLLS = 30               # re-read the whole table this often (save states, resets)
+SHOP_NAME_CHARS = 18                 # Buy list row width (characters that fit before the count)
+SHOP_DESC_CHARS = 40                 # description box line width
+# Rinaldo's vanilla stock, in the bit order of the vanilla mask (apshop.h SV_*): bit i set = the
+# item stays on sale. (name, game item ID)
+SHOP_VANILLA_ITEMS: Tuple[Tuple[str, int], ...] = (
+    ("Potion", 0x2A), ("High Potion", 0x2B), ("Serum", 0x2F), ("Uncurse Potion", 0x30),
+    ("Magical Ticket", 0x31), ("Memorial Ticket", 0x32), ("Diamond", 0x3C), ("Ruby", 0x3D),
+    ("Sapphire", 0x3E), ("Opal", 0x3F), ("Turquoise", 0x40), ("Zircon", 0x41),
+    ("Music Box", 0x60), ("Sacrificial Doll", 0x1A), ("White Bishop", 0x8C),
+)
+SHOP_VANILLA_ALL = (1 << len(SHOP_VANILLA_ITEMS)) - 1
+# AP item flags (NetworkItem.flags)
+AP_FLAG_PROGRESSION, AP_FLAG_USEFUL, AP_FLAG_TRAP = 0b001, 0b010, 0b100
+
 # ---- game state ----
 CUR_STAGE = 0x00738E94               # u16 stage, u16 room
 BOSS_KEY_BASE = 0x8000               # boss reward game_key = BOSS_KEY_BASE + reward index
@@ -102,6 +157,79 @@ class GameEvent:
     item: int
     location: int
     name: str
+
+
+@dataclass(frozen=True)
+class TorchSpot:
+    """One torch location of the slot, as the game's torch table holds it."""
+    room_key: int
+    x_bits: int
+    z_bits: int
+    game_key: int
+    checked: bool = False
+
+    def entry(self) -> bytes:
+        return TORCH_ENTRY.pack(self.room_key, 0, self.x_bits, self.z_bits, self.game_key,
+                                TF_CHECKED if self.checked else 0)
+
+    def unchecked(self) -> "TorchSpot":
+        return TorchSpot(self.room_key, self.x_bits, self.z_bits, self.game_key)
+
+
+@dataclass(frozen=True)
+class ShopEntry:
+    """One AP shop slot, as the game's shop table holds it."""
+    game_key: int
+    price: int
+    look: int = SHOP_LOOK_FILLER
+    name: str = "AP Item"
+    desc: str = ""
+    checked: bool = False
+
+    def entry(self, checked: Optional[bool] = None) -> bytes:
+        checked = self.checked if checked is None else checked
+        price = max(SHOP_PRICE_MIN, min(SHOP_PRICE_MAX, int(self.price)))
+        return SHOP_SLOT.pack(self.game_key, price, self.look, 1 if checked else 0, 0, 0, 0, 0,
+                              encode_text(self.name, SHOP_NAME_BYTES - 1),
+                              encode_text(self.desc, SHOP_DESC_BYTES - 1))
+
+    def unchecked(self) -> "ShopEntry":
+        return ShopEntry(self.game_key, self.price, self.look, self.name, self.desc)
+
+
+def _shop_clean(text: str) -> str:
+    """Item/player names for the game's text: no ^ codes or control characters."""
+    return "".join(" " if ch == "^" or ord(ch) < 0x20 else ch for ch in text).strip()
+
+
+def _fit(text: str, width: int) -> str:
+    return text if len(text) <= width else text[:max(1, width - 2)].rstrip() + ".."
+
+
+def shop_look(flags: int) -> int:
+    """The row's gem for an AP item's flags (traps look like filler)."""
+    if flags & AP_FLAG_PROGRESSION:
+        return SHOP_LOOK_PROGRESSION
+    if flags & AP_FLAG_USEFUL:
+        return SHOP_LOOK_USEFUL
+    return SHOP_LOOK_FILLER
+
+
+def shop_texts(item: str, player: str, own: bool, flags: int) -> Tuple[str, str]:
+    """(row name, description) of an AP shop slot holding `item` for `player` (own: this slot).
+    The row shows "<Player>'s <Item>" when it fits, else the item; the description has the item
+    on line 1 and who it's for and its kind on line 2."""
+    item, player = _shop_clean(item) or "Unknown item", _shop_clean(player) or "someone"
+    if own:
+        name = _fit(item, SHOP_NAME_CHARS)
+    else:
+        owned = f"{player}'s {item}"
+        name = owned if len(owned) <= SHOP_NAME_CHARS else _fit(item, SHOP_NAME_CHARS)
+    kind = ("progression" if flags & AP_FLAG_PROGRESSION else
+            "useful" if flags & AP_FLAG_USEFUL else "filler")
+    who = "you" if own else player
+    desc = _fit(item, SHOP_DESC_CHARS) + "\n" + _fit(f"for {who} ({kind})", SHOP_DESC_CHARS)
+    return name, desc
 
 
 @dataclass
@@ -141,6 +269,18 @@ class LoIInterface:
         self.last_event: Optional[Tuple[int, int, int]] = None
         self.missed = 0
         self.ticks = 0
+        # torch table: the layout last written (spots without their checked flag), the checked
+        # flags as far as we know them, polls until the next full re-read and the game's
+        # checked_seq at the last one
+        self.torch_layout: Optional[Tuple[TorchSpot, ...]] = None
+        self.torch_checked: List[bool] = []
+        self.torch_verify = 0
+        self.torch_seq = 0
+        # shop table: the same, for the shop's layout (vanilla mask, slots without checked flags)
+        self.shop_layout: Optional[Tuple[int, Tuple[ShopEntry, ...]]] = None
+        self.shop_checked: List[bool] = []
+        self.shop_verify = 0
+        self.shop_seq = 0
 
     # ---- connection check ----
     def check_game(self) -> None:
@@ -149,8 +289,8 @@ class LoIInterface:
             raise GameMismatch(f"PCSX2 is running {gid}, not Lament of Innocence ({GAME_ID})")
         magic, version = struct.unpack("<2I", self.mem.read(STATUS, 8))
         if magic != STATUS_MAGIC:
-            raise GameMismatch("the Archipelago Pickups patch isn't running (no status block at "
-                               f"{STATUS:#x}); install the pnach and enable its cheats, then boot "
+            raise GameMismatch("the Archipelago patch isn't running (no status block at "
+                               f"{STATUS:#x}); install the pnach and turn on its Archipelago patch, then boot "
                                "the game past the title screen")
         if version != PROTOCOL_VERSION:
             raise GameMismatch(f"the pickup patch speaks protocol {version}, this client "
@@ -282,6 +422,167 @@ class LoIInterface:
             self.mem.write32(RECVQ, RECV_MAGIC)
         return applied
 
+    # ---- torches ----
+    def sync_torches(self, spots: Sequence[TorchSpot]) -> List[int]:
+        """Make the game's torch table hold `spots` (empty: no table, every torch vanilla).
+        Returns the game_keys of torches the game marked checked that `spots` doesn't have checked
+        yet: breaking a red torch also posts an EV_LOCATION, so this is only a backstop for events
+        the client missed (e.g. torches broken while it wasn't running).
+        Checked flags are only ever set, never cleared. The whole table is rewritten when the
+        layout changes or the game lost it (console reset), and re-read when the game bumps
+        checked_seq and every TORCH_VERIFY_POLLS calls (a save-state load)."""
+        magic, count, seq, _ = TORCH_HEADER.unpack(self.mem.read(TORCH_TABLE, TORCH_HEADER.size))
+        if not spots:
+            if magic == TORCH_TABLE_MAGIC:
+                self.mem.write32(TORCH_TABLE, 0)
+            self.torch_layout = None
+            return []
+        spots = spots[:TORCH_TABLE_MAX]
+        layout = tuple(s.unchecked() for s in spots)
+        if magic != TORCH_TABLE_MAGIC or count != len(spots) or layout != self.torch_layout:
+            self._write_torch_table(spots, layout)
+            return []
+        found: List[int] = []
+        self.torch_verify += 1
+        if self.torch_verify >= TORCH_VERIFY_POLLS or seq != self.torch_seq:
+            self.torch_verify = 0
+            self.torch_seq = seq
+            found = self._verify_torch_table(spots)
+        for i, s in enumerate(spots):
+            if s.checked and not self.torch_checked[i]:
+                self.mem.write32(self._torch_flags_addr(i), TF_CHECKED)
+                self.torch_checked[i] = True
+        return found
+
+    @staticmethod
+    def _torch_flags_addr(i: int) -> int:
+        return TORCH_TABLE + TORCH_HEADER.size + i * TORCH_ENTRY.size + TORCH_FLAGS_OFFSET
+
+    def _write_torch_table(self, spots: Sequence[TorchSpot], layout: Tuple[TorchSpot, ...]) -> None:
+        self.mem.write32(TORCH_TABLE, 0)          # the game ignores the table while we write it
+        self.mem.write(TORCH_TABLE + TORCH_HEADER.size, b"".join(s.entry() for s in spots))
+        self.mem.write(TORCH_TABLE + 4, struct.pack("<3I", len(spots), 0, 0))
+        self.mem.write32(TORCH_TABLE, TORCH_TABLE_MAGIC)   # last
+        self.torch_layout = layout
+        self.torch_checked = [s.checked for s in spots]
+        self.torch_verify = 0
+        self.torch_seq = 0
+
+    def _verify_torch_table(self, spots: Sequence[TorchSpot]) -> List[int]:
+        """Re-read every entry: fix any that differ (a save state with another table, or one
+        from before some checks) and learn the checked flags the game set. Returns the game_keys
+        the game checked that `spots` doesn't have checked."""
+        raw = self.mem.read(TORCH_TABLE + TORCH_HEADER.size, len(spots) * TORCH_ENTRY.size)
+        found: List[int] = []
+        for i, s in enumerate(spots):
+            off = i * TORCH_ENTRY.size
+            *fields, flags = TORCH_ENTRY.unpack_from(raw, off)
+            same = tuple(fields) == (s.room_key, 0, s.x_bits, s.z_bits, s.game_key)
+            game_checked = same and bool(flags & TF_CHECKED)   # another table's flag means nothing
+            want = s.checked or game_checked
+            if game_checked and not s.checked:
+                found.append(s.game_key)
+            if not same or bool(flags & TF_CHECKED) != want:
+                entry = TorchSpot(s.room_key, s.x_bits, s.z_bits, s.game_key, want).entry()
+                self.mem.write(TORCH_TABLE + TORCH_HEADER.size + off, entry)
+            self.torch_checked[i] = want
+        return found
+
+    # ---- shop ----
+    def sync_shop(self, enabled: bool, vanilla: int, slots: Sequence[ShopEntry]) -> List[int]:
+        """Make the game's shop table hold `slots` with the vanilla items `vanilla` (SV_* bits)
+        on sale; not `enabled`: no table, the vanilla shop. Returns the game_keys of slots the game
+        marked checked (bought) that `slots` doesn't have checked yet: a purchase also posts an
+        EV_LOCATION, so this is a backstop for events the client missed.
+        Like sync_torches: checked flags are only ever set; the table is rewritten when the layout
+        changes or the game lost it (console reset), and re-read when the game bumps checked_seq
+        and every SHOP_VERIFY_POLLS calls (a save-state load)."""
+        magic, count, _vanilla, seq = SHOP_HEADER.unpack(
+            self.mem.read(SHOP_TABLE, SHOP_HEADER.size))[:4]
+        if not enabled:
+            if magic == SHOP_TABLE_MAGIC:
+                self.mem.write32(SHOP_TABLE, 0)
+            self.shop_layout = None
+            return []
+        slots = slots[:SHOP_SLOTS_MAX]
+        layout = (vanilla & SHOP_VANILLA_ALL, tuple(s.unchecked() for s in slots))
+        if (magic != SHOP_TABLE_MAGIC or count != len(slots) or layout != self.shop_layout
+                or _vanilla != layout[0]):
+            found = self._shop_game_checked(slots) if magic == SHOP_TABLE_MAGIC else []
+            self._write_shop_table(slots, layout, set(found))
+            return found
+        found: List[int] = []
+        self.shop_verify += 1
+        if self.shop_verify >= SHOP_VERIFY_POLLS or seq != self.shop_seq:
+            self.shop_verify = 0
+            self.shop_seq = seq
+            found = self._verify_shop_table(slots)
+        for i, s in enumerate(slots):
+            if s.checked and not self.shop_checked[i]:
+                self.mem.write32(self._shop_checked_addr(i), 1)
+                self.shop_checked[i] = True
+        return found
+
+    @staticmethod
+    def _shop_slot_addr(i: int) -> int:
+        return SHOP_TABLE + SHOP_HEADER.size + i * SHOP_SLOT.size
+
+    def _shop_checked_addr(self, i: int) -> int:
+        return self._shop_slot_addr(i) + SHOP_CHECKED_OFFSET
+
+    @staticmethod
+    def _shop_same(game: tuple, s: ShopEntry) -> bool:
+        """A slot as read from the game is `s` (all but the checked and report words)."""
+        want = SHOP_SLOT.unpack(s.entry(False))
+        return game[:3] + game[8:] == want[:3] + want[8:]
+
+    def _shop_game_checked(self, slots: Sequence[ShopEntry]) -> List[int]:
+        """game_keys of `slots` that the table in the game has checked and `slots` doesn't, read
+        before a rewrite so a purchase isn't lost with the old table. Only slots identical to ours
+        count: shop game_keys are the same in every seed, so another table's flag means nothing."""
+        _, count, _, _ = SHOP_HEADER.unpack(self.mem.read(SHOP_TABLE, SHOP_HEADER.size))[:4]
+        count = min(count, SHOP_SLOTS_MAX, len(slots))
+        if not count:
+            return []
+        raw = self.mem.read(self._shop_slot_addr(0), count * SHOP_SLOT.size)
+        found = []
+        for i in range(count):
+            game = SHOP_SLOT.unpack_from(raw, i * SHOP_SLOT.size)
+            if game[3] and not slots[i].checked and self._shop_same(game, slots[i]):
+                found.append(slots[i].game_key)
+        return found
+
+    def _write_shop_table(self, slots: Sequence[ShopEntry], layout, also_checked: set) -> None:
+        self.mem.write32(SHOP_TABLE, 0)           # the game ignores the table while we write it
+        checked = [s.checked or s.game_key in also_checked for s in slots]
+        if slots:
+            self.mem.write(self._shop_slot_addr(0),
+                           b"".join(s.entry(c) for s, c in zip(slots, checked)))
+        self.mem.write(SHOP_TABLE + 4, struct.pack("<3I", len(slots), layout[0], 0))
+        self.mem.write32(SHOP_TABLE, SHOP_TABLE_MAGIC)   # last
+        self.shop_layout = layout
+        self.shop_checked = checked
+        self.shop_verify = 0
+        self.shop_seq = 0
+
+    def _verify_shop_table(self, slots: Sequence[ShopEntry]) -> List[int]:
+        """Re-read every slot: fix any that differ (a save state with another table, or one from
+        before some checks) and learn the checked flags the game set."""
+        raw = self.mem.read(self._shop_slot_addr(0), len(slots) * SHOP_SLOT.size) if slots else b""
+        found: List[int] = []
+        for i, s in enumerate(slots):
+            off = i * SHOP_SLOT.size
+            game = SHOP_SLOT.unpack_from(raw, off)
+            same = self._shop_same(game, s)
+            game_checked = same and bool(game[3])   # another table's flag means nothing
+            want = s.checked or game_checked
+            if game_checked and not s.checked:
+                found.append(s.game_key)
+            if not same or bool(game[3]) != want:
+                self.mem.write(self._shop_slot_addr(i), s.entry(want))
+            self.shop_checked[i] = want
+        return found
+
     # ---- messages ----
     def post_message(self, text: str) -> bool:
         """Queue a popup (\\n line breaks, ^Crrggbbaa colour, ^c reset). False if the queue is full."""
@@ -297,6 +598,11 @@ class LoIInterface:
 def build_key_map(locations: Sequence[Dict]) -> Dict[int, int]:
     """game_key -> AP location ID, from data/locations.json records."""
     return {rec["game_key"]: rec["ap_id"] for rec in locations if rec.get("game_key") is not None}
+
+
+def shop_game_key(slot: int) -> int:
+    """game_key of AP shop slot `slot` (0-based, the order of slot_data["shop_locations"])."""
+    return SHOP_KEY_BASE + slot
 
 
 def boss_game_key(iso_offset: int) -> int:

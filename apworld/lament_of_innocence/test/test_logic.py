@@ -35,11 +35,13 @@ class TestData(LoITestBase):
                 loc = self.multiworld.get_location(rec["name"], self.player)
                 self.assertEqual(loc.progress_type, LocationProgressType.EXCLUDED, rec["name"])
 
-    def test_starts_with_svarog(self) -> None:
-        names = [i.name for i in self.multiworld.itempool]
-        self.assertNotIn("Svarog Statue", names)
+    def test_svarog_shuffled(self) -> None:
+        """The tutorial Golden Knight takes any attack (patch), so the Svarog Statue isn't given
+        at the start: it's in the pool like the other relics."""
+        names = [i.name for i in self.multiworld.itempool if i.player == self.player]
+        self.assertEqual(names.count("Svarog Statue"), 1)
         start = [i.name for i in self.multiworld.precollected_items[self.player]]
-        self.assertEqual(start.count("Svarog Statue"), 1)
+        self.assertNotIn("Svarog Statue", start)
 
     def test_ids_stable(self) -> None:
         by_name = {r["name"]: r for r in LOCATIONS}

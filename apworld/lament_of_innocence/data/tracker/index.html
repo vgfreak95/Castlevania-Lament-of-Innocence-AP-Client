@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoI Map Tracker</title>
+<style>
+:root {
+  --bg: #0d0f14; --panel: rgba(20, 23, 31, 0.92); --line: #2a2f3d; --text: #d8dce6; --dim: #8a90a0;
+  --accent: #d9b45a; --ok: #5fbf75; --bad: #d76060;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+#view { position: fixed; inset: 0; }
+.panel { position: fixed; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; }
+#side { top: 12px; left: 12px; width: 270px; max-width: calc(100% - 24px); max-height: calc(100% - 24px);
+  overflow: auto; }
+#side h1 { font-size: 14px; margin: 0 0 8px; }
+#side label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
+#side select, #side input[type=range] { width: 140px; }
+select { background: #161a23; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 3px; }
+button { background: #1b202b; color: var(--text); border: 1px solid var(--line); border-radius: 4px;
+  padding: 4px 8px; cursor: pointer; font: inherit; }
+button.on { border-color: var(--accent); color: var(--accent); }
+.row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+#status { font-size: 12px; color: var(--dim); margin-top: 8px; white-space: pre-line; }
+#status b { color: var(--text); font-weight: 600; }
+.legend { display: grid; grid-template-columns: 14px 1fr; gap: 4px 8px; align-items: center; margin-top: 10px;
+  font-size: 12px; color: var(--dim); }
+.sw { width: 12px; height: 12px; border-radius: 2px; }
+#info { bottom: 12px; left: 12px; min-width: 220px; max-width: min(420px, calc(100% - 24px));
+  max-height: 45%; overflow: auto; display: none; }
+#info ul { margin: 6px 0 0; padding-left: 18px; }
+#info li.done { color: var(--dim); text-decoration: line-through; }
+#empty { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100% - 32px)); display: none; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--bad); }
+.dot.ok { background: var(--ok); }
+</style>
+</head>
+<body>
+<div id="view"></div>
+
+<div id="side" class="panel">
+  <h1>Lament of Innocence map</h1>
+  <label>Area <select id="area"></select></label>
+  <label>Floors <select id="floor"><option value="all">All</option></select></label>
+  <label>Floor spacing <input id="spacing" type="range" min="0" max="600" value="200"></label>
+  <label>Wall height <input id="wallh" type="range" min="0" max="120" value="24"></label>
+  <div class="row">
+    <button id="follow" class="on" title="Keep Leon in view (F)">Follow</button>
+    <button id="unvisited" class="on" title="Show rooms not visited yet">Unvisited</button>
+    <button id="doors" class="on">Doors</button>
+    <button id="torches" class="on">Torches</button>
+    <button id="top" title="Top view (T)">Top</button>
+  </div>
+  <div id="status"><span class="dot"></span>connecting…</div>
+  <div class="legend">
+    <span class="sw" style="background:#4f7fbf"></span><span>visited room</span>
+    <span class="sw" style="background:#3a3f4c"></span><span>not visited</span>
+    <span class="sw" style="background:#3f9a55"></span><span>every location checked</span>
+    <span class="sw" style="background:#f08a30"></span><span>locations left (marker) / torch</span>
+    <span class="sw" style="background:#b04848"></span><span>save room</span>
+    <span class="sw" style="background:#7fd0d8"></span><span>Leon's room</span>
+    <span class="sw" style="background:#e0c040"></span><span>door</span>
+  </div>
+</div>
+
+<div id="info" class="panel"></div>
+<div id="empty" class="panel">
+  <b>No map yet.</b><br><br>
+  Each area's map is read from your game the first time Leon is in it while this page's client is
+  connected to PCSX2. Walk into any room and it appears here.
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+// Map space (the pause map's): x right, z north. three.js: X = x, Y = up, Z = -z.
+const $ = (id) => document.getElementById(id);
+const COL = {
+  visited: 0x4f7fbf, unvisited: 0x3a3f4c, done: 0x3f9a55, save: 0xb04848, here: 0x7fd0d8,
+  door: 0xe0c040, left: 0xf08a30, player: 0xffd75a, checked: 0x6a6f7a,
+};
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+$("view").appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0f14);
+const camera = new THREE.PerspectiveCamera(50, 1, 1, 200000);
+camera.position.set(0, 1500, 1500);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.screenSpacePanning = true;
+scene.add(new THREE.HemisphereLight(0xdde6ff, 0x202030, 1.1));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(0.4, 1, 0.3);
+scene.add(sun);
+
+let MAPS = { areas: [] }, STATE = {}, AREA = null, version = -1;
+const world = new THREE.Group();
+scene.add(world);
+let roomMeshes = [];   // { piece, floorMesh, wallMesh, marker }
+const markers = new THREE.Group();   // doors, torches: rebuilt from the state
+scene.add(markers);
+const opts = { follow: true, unvisited: true, doors: true, torches: true };
+
+const player = new THREE.Group();
+{
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(14, 40, 16), new THREE.MeshBasicMaterial({ color: COL.player }));
+  cone.rotation.x = -Math.PI / 2;   // along -Z (map north) before the heading turn
+  cone.position.y = 10;
+  player.add(cone);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 300, 6),
+    new THREE.MeshBasicMaterial({ color: COL.player, transparent: true, opacity: 0.35 }));
+  beam.position.y = 150;
+  player.add(beam);
+  player.visible = false;
+  scene.add(player);
+}
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+resize();
+
+// --- geometry: triangles are (x, z) pairs, 3 per triangle ----------------------------------
+
+const spacing = () => +$("spacing").value;
+const wallH = () => +$("wallh").value;
+const floorY = (f) => f * spacing();
+
+function floorGeometry(t, start, count) {
+  const pos = new Float32Array(count * 9);
+  for (let i = 0; i < count * 3; i++) {
+    const o = (start * 3 + i) * 2;
+    pos[i * 3] = t[o]; pos[i * 3 + 1] = 0; pos[i * 3 + 2] = -t[o + 1];
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+// wall band triangles extruded into prisms (top face + three sides)
+function wallGeometry(t, start, count, h) {
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const v = [0, 1, 2].map((k) => { const o = ((start + i) * 3 + k) * 2; return [t[o], -t[o + 1]]; });
+    out.push(v[0][0], h, v[0][1], v[1][0], h, v[1][1], v[2][0], h, v[2][1]);
+    for (let k = 0; k < 3; k++) {
+      const a = v[k], b = v[(k + 1) % 3];
+      out.push(a[0], 0, a[1], b[0], 0, b[1], b[0], h, b[1], a[0], 0, a[1], b[0], h, b[1], a[0], h, a[1]);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(out), 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+const mats = {};
+function mat(color, opacity = 1) {
+  const key = color + ":" + opacity;
+  return mats[key] ??= new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide,
+    transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
+}
+const markerGeo = new THREE.OctahedronGeometry(14);
+const doorGeo = new THREE.BoxGeometry(10, 16, 10);
+const torchGeo = new THREE.SphereGeometry(6, 10, 8);
+
+async function loadArea(id, frame = true) {
+  const area = MAPS.areas.find((a) => a.id === id);
+  if (!area) return;
+  for (const r of roomMeshes) { r.floorMesh?.geometry.dispose(); r.wallMesh?.geometry.dispose(); }
+  world.clear();
+  roomMeshes = [];
+  AREA = area;
+  AREA.tris = new Float32Array(await (await fetch(`/api/area/${id}?v=${version}`)).arrayBuffer());
+  for (const p of area.pieces) {
+    const r = { piece: p };
+    if (p.floors[1]) {
+      r.floorMesh = new THREE.Mesh(floorGeometry(AREA.tris, p.floors[0], p.floors[1]), mat(COL.visited));
+      r.floorMesh.userData.room = r;
+      world.add(r.floorMesh);
+    }
+    if (p.walls[1]) {
+      r.wallMesh = new THREE.Mesh(wallGeometry(AREA.tris, p.walls[0], p.walls[1], wallH()), mat(0x9aa3b5));
+      r.wallMesh.userData.room = r;
+      world.add(r.wallMesh);
+    }
+    if (p.box) {
+      r.marker = new THREE.Mesh(markerGeo, new THREE.MeshBasicMaterial({ color: COL.left }));
+      r.marker.userData.room = r;
+      world.add(r.marker);
+    }
+    roomMeshes.push(r);
+  }
+  const floors = [...new Set(area.pieces.map((p) => p.floor))].sort((a, b) => a - b);
+  const keep = $("floor").value;
+  $("floor").innerHTML = '<option value="all">All</option>' +
+    floors.map((f) => `<option value="${f}">Floor ${f}</option>`).join("");
+  if ([...$("floor").options].some((o) => o.value === keep)) $("floor").value = keep;
+  layout();
+  if (frame) frameArea();
+}
+
+// --- AP and visited state per room ----------------------------------------------------------
+
+function roomKey(stage, room) {
+  const fk = STATE.first_keys;
+  return fk && stage < fk.length ? fk[stage] + room : -1;
+}
+const visited = (stage, room) => !!STATE.visited?.[roomKey(stage, room)];
+function roomLocations(stage, room) {
+  return STATE.rooms?.[String(roomKey(stage, room))] || [];
+}
+
+// heights, visibility and colours: runs on every state poll
+function layout() {
+  if (!AREA) return;
+  const only = $("floor").value;
+  const here = STATE.player && STATE.area === AREA.id ? STATE : null;
+  for (const r of roomMeshes) {
+    const p = r.piece, y = floorY(p.floor);
+    const onFloor = only === "all" || +only === p.floor;
+    const seen = visited(p.stage, p.room);
+    const isHere = here && here.stage === p.stage && here.room === p.room;
+    const locs = roomLocations(p.stage, p.room), left = locs.filter((l) => !l[1]).length;
+    const show = onFloor && (seen || isHere || opts.unvisited);
+    const color = isHere ? COL.here : p.save ? COL.save : locs.length && !left ? COL.done
+      : seen ? COL.visited : COL.unvisited;
+    const alpha = seen || isHere ? 1 : 0.45;
+    if (r.floorMesh) { r.floorMesh.position.y = y; r.floorMesh.visible = show; r.floorMesh.material = mat(color, alpha); }
+    if (r.wallMesh) {
+      r.wallMesh.position.y = y + 0.5; r.wallMesh.visible = show;
+      r.wallMesh.material = mat(isHere ? 0xd8f0f4 : seen ? 0x9aa3b5 : 0x555a66, alpha);
+    }
+    if (r.marker) {
+      const [x0, z0, x1, z1] = p.box;
+      r.marker.position.set((x0 + x1) / 2, y + wallH() + 30, -(z0 + z1) / 2);
+      r.marker.visible = show && left > 0;
+    }
+  }
+  for (const m of markers.children) {
+    const u = m.userData;
+    m.position.set(u.x, floorY(u.floor) + 8, -u.z);
+    m.visible = (only === "all" || +only === u.floor) && (u.door ? opts.doors : opts.torches);
+  }
+}
+
+// doors and torches come with the state; rebuilt when they change
+let markerSig = "";
+function rebuildMarkers() {
+  if (!AREA) return;
+  const doors = (STATE.doors || []).filter((d) => d.area === AREA.id);
+  const torches = (STATE.torches || []).filter((t) => t.area === AREA.id);
+  const sig = AREA.id + ":" + doors.length + ":" + torches.map((t) => +t.checked).join("");
+  if (sig === markerSig) return;
+  markerSig = sig;
+  markers.clear();
+  for (const d of doors) {
+    const m = new THREE.Mesh(doorGeo, new THREE.MeshBasicMaterial({ color: COL.door }));
+    m.userData = { ...d, door: d };
+    markers.add(m);
+  }
+  for (const t of torches) {
+    const m = new THREE.Mesh(torchGeo, new THREE.MeshBasicMaterial({ color: t.checked ? COL.checked : COL.left }));
+    m.userData = { ...t, torch: t };
+    markers.add(m);
+  }
+}
+
+function rebuildWalls() {
+  if (!AREA) return;
+  for (const r of roomMeshes) {
+    if (!r.wallMesh) continue;
+    r.wallMesh.geometry.dispose();
+    r.wallMesh.geometry = wallGeometry(AREA.tris, r.piece.walls[0], r.piece.walls[1], wallH());
+  }
+  layout();
+}
+
+function frameArea() {
+  const box = new THREE.Box3();
+  for (const r of roomMeshes) for (const m of [r.floorMesh, r.wallMesh]) if (m) box.expandByObject(m);
+  if (box.isEmpty()) return;
+  const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+  const d = Math.max(s.x, s.z) * 0.9 + 200;
+  controls.target.copy(c);
+  camera.position.set(c.x, c.y + d, c.z + d * 0.7);
+}
+
+// --- polling --------------------------------------------------------------------------------
+
+async function loadMaps() {
+  try { MAPS = await (await fetch("/api/maps")).json(); } catch { MAPS = { areas: [] }; }
+  $("empty").style.display = MAPS.areas.length ? "none" : "block";
+  const cur = $("area").value;
+  $("area").innerHTML = MAPS.areas.map((a) =>
+    `<option value="${a.id}">Area ${a.id} (stage ${a.stages.join(", ")})</option>`).join("");
+  if (MAPS.areas.some((a) => String(a.id) === cur)) $("area").value = cur;
+}
+
+async function poll() {
+  try { STATE = await (await fetch("/api/state")).json(); }
+  catch { STATE = { connected: false, error: "the client isn't running" }; }
+  if (STATE.version !== undefined && STATE.version !== version) {
+    version = STATE.version;
+    await loadMaps();
+    const want = MAPS.areas.some((a) => a.id === STATE.area) && (opts.follow || !AREA) ? STATE.area
+      : AREA ? AREA.id : MAPS.areas[0]?.id;
+    if (want !== undefined) { $("area").value = want; await loadArea(want, !AREA); }
+  } else if (opts.follow && AREA && STATE.area && STATE.area !== AREA.id &&
+             MAPS.areas.some((a) => a.id === STATE.area)) {
+    $("area").value = STATE.area;
+    await loadArea(STATE.area);
+  }
+  rebuildMarkers();
+  layout();
+  showStatus();
+  const p = STATE.player;
+  if (p && AREA && STATE.area === AREA.id) {
+    player.visible = true;
+    player.position.set(p.x, floorY(p.floor), -p.z);
+    player.rotation.y = Math.atan2(-p.dir[0], p.dir[1]);
+    if (opts.follow) {
+      const delta = player.position.clone().sub(controls.target);
+      controls.target.add(delta);
+      camera.position.add(delta);
+    }
+  } else player.visible = false;
+  setTimeout(poll, 250);
+}
+
+function showStatus() {
+  const s = STATE;
+  let txt = s.connected
+    ? `<span class="dot ok"></span>Stage <b>${s.stage}</b> room <b>${s.room}</b>` +
+      (s.player ? ` · floor <b>${s.player.floor}</b>` : "")
+    : `<span class="dot"></span>${s.error || "PCSX2 not connected"}`;
+  if (s.slot) {
+    const all = Object.values(s.rooms || {}).flat(), left = all.filter((l) => !l[1]).length;
+    txt += `\n${s.slot}: ${all.length - left} of ${all.length} pickups checked`;
+  } else if (s.connected !== undefined) txt += "\nnot connected to an Archipelago server";
+  $("status").innerHTML = txt;
+}
+
+// --- picking --------------------------------------------------------------------------------
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let downAt = null;
+renderer.domElement.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener("pointerup", (e) => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) return;
+  mouse.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const targets = [...world.children, ...markers.children].filter((m) => m.visible);
+  const hit = ray.intersectObjects(targets, false)[0];
+  const info = $("info");
+  if (!hit) { info.style.display = "none"; return; }
+  const u = hit.object.userData;
+  let html = "";
+  if (u.room) {
+    const p = u.room.piece, locs = roomLocations(p.stage, p.room);
+    html = `<b>Stage ${p.stage}, room ${p.room}</b> · floor ${p.floor}${p.save ? " · save room" : ""}` +
+      `<br>${visited(p.stage, p.room) ? "visited" : "not visited"}`;
+    if (locs.length) html += "<ul>" + locs.map(([n, c]) => `<li class="${c ? "done" : ""}">${esc(n)}</li>`).join("") + "</ul>";
+  } else if (u.door) {
+    html = `<b>Door</b> to stage ${u.door.dest[0]} room ${u.door.dest[1]}`;
+  } else if (u.torch) {
+    html = `<b>${esc(u.torch.name)}</b><br>${u.torch.checked ? "checked" : "not checked"}`;
+  }
+  info.innerHTML = html;
+  info.style.display = "block";
+});
+
+// --- controls -------------------------------------------------------------------------------
+
+for (const key of ["follow", "unvisited", "doors", "torches"]) {
+  $(key).addEventListener("click", () => {
+    opts[key] = !opts[key];
+    $(key).classList.toggle("on", opts[key]);
+    layout();
+  });
+}
+function topView() {
+  const t = controls.target, d = camera.position.distanceTo(t);
+  camera.position.set(t.x, t.y + d, t.z + 0.001);
+}
+$("top").addEventListener("click", topView);
+$("area").addEventListener("change", () => { if (opts.follow) $("follow").click(); loadArea(+$("area").value); });
+$("floor").addEventListener("change", layout);
+$("spacing").addEventListener("input", layout);
+$("wallh").addEventListener("input", rebuildWalls);
+addEventListener("keydown", (e) => {
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
+  if (e.key === "f" || e.key === "F") $("follow").click();
+  if (e.key === "t" || e.key === "T") topView();
+  if (e.key === "Home") frameArea();
+});
+controls.addEventListener("start", () => { if (opts.follow) $("follow").click(); });
+
+(function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+poll();
+</script>
+</body>
+</html>

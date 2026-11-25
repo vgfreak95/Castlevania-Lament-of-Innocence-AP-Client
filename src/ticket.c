@@ -32,6 +32,7 @@
 #include "ticket.h"
 #include "apmenu.h"
 #include "savewarps.h"
+#include "apshop.h"
 
 #define USABLE_FIRST       0x2A
 #define USABLE_INFO(id)    ((u32 *)(0x0073AC08 + ((id) - USABLE_FIRST) * 0x50))
@@ -229,6 +230,10 @@ static void ticket_frame(void)
 /* Replaces the "j GetText" tail calls of the item name/description lookups (a0 = text ID). */
 char *item_text_hook(int text_id)
 {
+    char *shop = shop_text(text_id);   /* Shop Sanity rows (apshop.c) */
+
+    if (shop)
+        return shop;
     if (text_id == TEXT_NAME)
         return (char *)ticket_name;
     if (text_id == TEXT_DESC)
@@ -398,6 +403,7 @@ void ticket_frame_hook(void)
 {
     Fn_454FE0();
     ticket_frame();
+    apshop_frame();          /* Shop Sanity item records (apshop.c) */
     if (notice_frames > 0) {
         notice_frames--;
         if (in_save_room())

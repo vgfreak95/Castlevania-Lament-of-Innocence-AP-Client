@@ -1,16 +1,25 @@
 """Minimal PINE client for PCSX2 (EE memory reads/writes over a local socket).
 
 PCSX2: Settings > Advanced > PINE, default slot 28011. On Windows PINE is a TCP server on
-127.0.0.1:<slot>. Every message is [u32 total size][commands...]; the reply is
+127.0.0.1:<slot>. On Linux and macOS it is a Unix socket (PCSX2's PINE.cpp): pcsx2.sock in
+$XDG_RUNTIME_DIR (Linux; /tmp without it) or $TMPDIR (macOS), named pcsx2.sock.<slot> for a slot
+other than 28011. The AppImage only has that socket; the Flatpak's is under
+$XDG_RUNTIME_DIR/app/net.pcsx2.PCSX2/. Pine tries an explicit socket path first, then those
+default paths, then TCP (which also covers a socket forwarded with socat).
+Every message is [u32 total size][commands...]; the reply is
 [u32 total size][u8 result][values...], the values of a batch simply concatenated.
 
 No Archipelago imports: the protocol tests run this against a fake socket.
 """
 from __future__ import annotations
 
+import os
+import posixpath
 import socket
 import struct
-from typing import Iterable, List, Optional, Sequence, Tuple
+import sys
+import tempfile
+from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
 DEFAULT_SLOT = 28011
 
@@ -29,22 +38,78 @@ class PineError(ConnectionError):
     """PCSX2 is not reachable, closed the connection, or rejected a command."""
 
 
+SOCKET_NAME = "pcsx2.sock"
+FLATPAK_DIR = "app/net.pcsx2.PCSX2"
+
+
+def unix_sockets_supported() -> bool:
+    return hasattr(socket, "AF_UNIX") and sys.platform != "win32"
+
+
+def default_socket_paths(slot: int = DEFAULT_SLOT, env: Optional[Mapping[str, str]] = None,
+                         platform: Optional[str] = None) -> List[str]:
+    """Where PCSX2 puts its PINE socket for `slot` (Linux/macOS; none on Windows)."""
+    env = os.environ if env is None else env
+    platform = sys.platform if platform is None else platform
+    if platform == "win32":
+        return []
+    name = SOCKET_NAME if slot == DEFAULT_SLOT else f"{SOCKET_NAME}.{slot}"
+    if platform == "darwin":
+        dirs = [env.get("TMPDIR") or tempfile.gettempdir()]
+    else:
+        runtime = env.get("XDG_RUNTIME_DIR")
+        dirs = [runtime, posixpath.join(runtime, FLATPAK_DIR)] if runtime else []
+        dirs.append("/tmp")
+    paths: List[str] = []
+    for d in dirs:
+        path = posixpath.join(d, name)   # POSIX paths only (no sockets on Windows)
+        if path not in paths:
+            paths.append(path)
+    return paths
+
+
 class Pine:
-    def __init__(self, slot: int = DEFAULT_SLOT, host: str = "127.0.0.1", timeout: float = 2.0):
+    def __init__(self, slot: int = DEFAULT_SLOT, host: str = "127.0.0.1", timeout: float = 2.0,
+                 socket_path: Optional[str] = None):
         self.slot = slot
         self.host = host
         self.timeout = timeout
+        self.socket_path = socket_path      # explicit Unix socket; None = the default paths
         self.sock: Optional[socket.socket] = None
+        self.endpoint = ""                  # what the last connect() reached, for messages
 
     # ---- connection ----
     def connect(self) -> None:
+        """Connect over PCSX2's Unix socket when there is one, else over TCP 127.0.0.1:<slot>.
+        An explicit socket_path is used alone (no TCP fallback)."""
         self.close()
+        errors: List[str] = []
+        if unix_sockets_supported():
+            paths = [self.socket_path] if self.socket_path else default_socket_paths(self.slot)
+            for path in paths:
+                if not self.socket_path and not os.path.exists(path):
+                    continue
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                sock.settimeout(self.timeout)
+                try:
+                    sock.connect(path)
+                except OSError as exc:
+                    sock.close()
+                    errors.append(f"socket {path}: {exc}")
+                    continue
+                self.sock, self.endpoint = sock, f"socket {path}"
+                return
+            if self.socket_path:
+                raise PineError(f"cannot connect to PCSX2 PINE ({errors[0]})")
+        elif self.socket_path:
+            raise PineError("Unix sockets aren't available on this system; use the PINE slot")
         try:
             sock = socket.create_connection((self.host, self.slot), timeout=self.timeout)
         except OSError as exc:
-            raise PineError(f"cannot connect to PCSX2 PINE on port {self.slot}: {exc}") from exc
+            errors.append(f"port {self.slot}: {exc}")
+            raise PineError("cannot connect to PCSX2 PINE (" + "; ".join(errors) + ")") from exc
         sock.settimeout(self.timeout)
-        self.sock = sock
+        self.sock, self.endpoint = sock, f"port {self.slot}"
 
     def close(self) -> None:
         if self.sock is not None:

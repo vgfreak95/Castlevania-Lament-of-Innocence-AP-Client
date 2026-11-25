@@ -1,6 +1,6 @@
 """Archipelago client for Castlevania: Lament of Innocence on PCSX2.
 
-Needs the "Archipelago Pickups" pnach (src/pickup.c) on the vanilla SLUS-20733 ISO and PINE
+Needs the "Archipelago" pnach patch (src/pickup.c and friends) on the vanilla SLUS-20733 ISO and PINE
 enabled in PCSX2 (Settings > Advanced > PINE, slot 28011). The RAM protocol is in
 game_interface.py.
 
@@ -10,6 +10,9 @@ Start it from the Archipelago Launcher ("Lament of Innocence Client"), or for de
 from __future__ import annotations
 
 import asyncio
+import struct
+import webbrowser
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 import Utils
@@ -17,10 +20,14 @@ from CommonClient import (ClientCommandProcessor, CommonContext, get_base_parser
                           logger, server_loop)
 from NetUtils import ClientStatus, NetworkItem
 
-from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS
-from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, QOL_WOLFS_FOOT, GameMismatch,
-                             GameStatus, LoIInterface, build_key_map, resolve_progressive)
+from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS, TORCHES
+from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, SHOP_SLOTS_MAX,
+                             SHOP_VANILLA_ALL, qol_wolfs_foot, GameMismatch, GameStatus,
+                             LoIInterface, ShopEntry, TorchSpot, build_key_map,
+                             resolve_progressive, shop_game_key, shop_look, shop_texts)
+from .mapshapes import MapShapeError
 from .pine import DEFAULT_SLOT, Pine, PineError
+from .tracker import MapTracker
 
 POLL_INTERVAL = 0.1           # seconds between game polls (the event ring holds 8 events)
 RECONNECT_INTERVAL = 2.0
@@ -28,6 +35,11 @@ GOAL_OPTION_WALTER, GOAL_OPTION_DEATH = 0, 1
 ALL_AREA_LOCKS = 0x1F         # the five hub areas (items.py AREA_KEYS), src/stagekeys.h
 BASIC_SKILLS_VANILLA = 0      # options.py BasicSkills.option_vanilla
 BASIC_SKILLS_MASK = 0x5000    # Quick Step | Perfect Guard (items.py BASIC_SKILLS_MASK, src/skills.h)
+TORCH_SANITY_OFF = 0          # options.py TorchSanity.option_off
+SHOP_SANITY_OFF = 0           # slot_data["shop_sanity"]: 0 = vanilla shop
+SHOP_DEFAULT_PRICE = 1000     # an AP shop slot without a price in slot_data
+MAP_TICK_EVERY = 2            # game polls per map tracker update (5 per second)
+PICKUP_KEY_LIMIT = 0x8000     # game_keys below this are room_key * 64 + index (boss rewards above)
 
 
 class LoICommandProcessor(ClientCommandProcessor):
@@ -62,6 +74,28 @@ class LoICommandProcessor(ClientCommandProcessor):
         self.output(f"Using PINE slot {self.ctx.pine_slot}")
         return True
 
+    def _cmd_socket(self, path: str = "") -> bool:
+        """Connect to PCSX2 over this Unix socket (Linux/macOS), or "auto" for PCSX2's default."""
+        if not path:
+            self.output(f"PINE socket is {self.ctx.pine_socket or 'auto'}; "
+                        "usage: /socket /run/user/1000/pcsx2.sock (or /socket auto)")
+            return False
+        self.ctx.pine_socket = None if path.lower() == "auto" else path
+        self.ctx.reconnect_game = True
+        self.output(f"Using PINE socket {self.ctx.pine_socket or 'auto'}")
+        return True
+
+    def _cmd_map(self) -> bool:
+        """Open the 3D map tracker in your browser (the Map tab shows the same map in 2D)."""
+        try:
+            url = self.ctx.map_tracker.start()
+        except OSError as exc:
+            self.output(f"Could not start the map tracker: {exc}")
+            return False
+        self.output(f"Map tracker at {url} (each area's map appears once Leon has been there)")
+        webbrowser.open(url)
+        return True
+
 
 class LoIContext(CommonContext):
     command_processor = LoICommandProcessor
@@ -72,11 +106,13 @@ class LoIContext(CommonContext):
     def __init__(self, server_address: Optional[str], password: Optional[str]):
         super().__init__(server_address, password)
         self.pine_slot = DEFAULT_SLOT
+        self.pine_socket: Optional[str] = None   # explicit Unix socket path; None = auto
         self.reconnect_game = False
         self.popups = True
         self.game_state = "not connected"
         self.slot_data: Dict = {}
-        self.key_to_location: Dict[int, int] = build_key_map(LOCATIONS)
+        self.base_key_to_location: Dict[int, int] = build_key_map(LOCATIONS + TORCHES)
+        self.key_to_location: Dict[int, int] = dict(self.base_key_to_location)
         self.location_to_key: Dict[int, int] = {v: k for k, v in self.key_to_location.items()}
         self.ap_to_game_item: Dict[int, int] = {rec["ap_id"]: rec["game_id"] for rec in ITEMS}
         self.unknown_keys: Set[int] = set()
@@ -84,6 +120,13 @@ class LoIContext(CommonContext):
         self.pending_popups: List[str] = []
         self.last_deaths: Optional[int] = None   # game's death counter last seen; None = re-read
         self.pending_kills = 0                   # received DeathLinks not yet passed to the game
+        # ((slot torch count, checked torch ap_ids), torch table) last built
+        self.torch_spots_cache: Optional[Tuple[Tuple[int, frozenset], List[TorchSpot]]] = None
+        # (checked shop ap_ids, scouted shop ap_ids, slot names), shop table last built
+        self.shop_cache: Optional[Tuple[tuple, List[ShopEntry]]] = None
+        self.map_tracker = MapTracker(Path(Utils.cache_path("lament_of_innocence", "maps")))
+        self.map_ticks = 0
+        self.map_ap_key: Optional[tuple] = None   # what the tracker's AP view was built from
         unmapped = sum(1 for rec in LOCATIONS if rec.get("game_key") is None)
         if unmapped:
             logger.warning(f"{unmapped} locations have no game_key yet (run tools/loc_scan.py); "
@@ -92,7 +135,16 @@ class LoIContext(CommonContext):
     def make_gui(self):
         ui = super().make_gui()
         ui.base_title = "Archipelago Lament of Innocence Client"
-        return ui
+        from .map_view import build_map_tab
+        tracker = self.map_tracker
+
+        class LoIManager(ui):
+            def build(self):
+                container = super().build()
+                self.add_client_tab("Map", build_map_tab(tracker))
+                return container
+
+        return LoIManager
 
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
@@ -104,6 +156,9 @@ class LoIContext(CommonContext):
         if cmd == "Connected":
             self.slot_data = args.get("slot_data") or {}
             self.goal_sent = False
+            self.torch_spots_cache = None
+            self.shop_cache = None
+            self.setup_shop()
             asyncio.create_task(self.update_death_link(bool(self.slot_data.get("death_link"))))
         elif cmd == "PrintJSON" and self.popups:
             self._queue_sent_popup(args)
@@ -114,7 +169,114 @@ class LoIContext(CommonContext):
 
     async def disconnect(self, allow_autoreconnect: bool = False):
         self.slot_data = {}
+        self.torch_spots_cache = None
+        self.shop_cache = None
         await super().disconnect(allow_autoreconnect)
+
+    # ---- Torch Sanity ----
+    torch_ap_ids: Set[int] = {rec["ap_id"] for rec in TORCHES}
+
+    def torch_sanity(self) -> bool:
+        return self.slot_data.get("torch_sanity", TORCH_SANITY_OFF) != TORCH_SANITY_OFF
+
+    def torch_spots(self) -> List[TorchSpot]:
+        """The game's torch table: every torch location of the slot, checked or not (a red torch
+        drops nothing, so the client doesn't need to know what it holds)."""
+        if not self.torch_sanity() or self.slot is None:
+            return []
+        slot_torches = self.torch_ap_ids & self.server_locations
+        checked = frozenset(slot_torches & (self.checked_locations | self.locations_checked))
+        if self.torch_spots_cache and self.torch_spots_cache[0] == (len(slot_torches), checked):
+            return self.torch_spots_cache[1]
+        spots = [TorchSpot(rec["room_key"], rec["x_bits"], rec["z_bits"], rec["game_key"],
+                           rec["ap_id"] in checked)
+                 for rec in TORCHES if rec["ap_id"] in slot_torches]
+        self.torch_spots_cache = ((len(slot_torches), checked), spots)
+        return spots
+
+    # ---- Shop Sanity ----
+    # slot_data: "shop_sanity" (0 off), "shop_vanilla" (bit i = SHOP_VANILLA_ITEMS[i] stays on
+    # sale), "shop_locations" (AP location IDs, slot i = game_key SHOP_KEY_BASE + i) and
+    # "shop_prices" (gold, same order).
+    def shop_sanity(self) -> bool:
+        return self.slot_data.get("shop_sanity", SHOP_SANITY_OFF) != SHOP_SANITY_OFF
+
+    def shop_locations(self) -> List[int]:
+        if not self.shop_sanity():
+            return []
+        return [int(x) for x in self.slot_data.get("shop_locations") or []][:SHOP_SLOTS_MAX]
+
+    def shop_vanilla(self) -> int:
+        if not self.shop_sanity():
+            return SHOP_VANILLA_ALL
+        return int(self.slot_data.get("shop_vanilla", SHOP_VANILLA_ALL)) & SHOP_VANILLA_ALL
+
+    def setup_shop(self) -> None:
+        """On Connected: map the shop slots' game_keys and scout what they hold (no hints), for
+        the names the shop shows."""
+        self.key_to_location = dict(self.base_key_to_location)
+        locations = self.shop_locations()
+        for i, ap_id in enumerate(locations):
+            self.key_to_location[shop_game_key(i)] = ap_id
+        self.location_to_key = {v: k for k, v in self.key_to_location.items()}
+        if locations:
+            asyncio.create_task(self.send_msgs([{"cmd": "LocationScouts", "locations": locations,
+                                                 "create_as_hint": 0}]))
+
+    def shop_entries(self) -> List[ShopEntry]:
+        """The game's shop table: every AP shop slot, checked or not, with the price and the text
+        of what it holds (a placeholder until the scout answer is in)."""
+        locations = self.shop_locations()
+        if not locations or self.slot is None:
+            return []
+        checked_all = self.checked_locations | self.locations_checked
+        checked = frozenset(a for a in locations if a in checked_all)
+        scouted = frozenset(a for a in locations if a in self.locations_info)
+        key = (checked, scouted, len(self.player_names))
+        if self.shop_cache and self.shop_cache[0] == key:
+            return self.shop_cache[1]
+        prices = list(self.slot_data.get("shop_prices") or [])
+        entries = []
+        for i, ap_id in enumerate(locations):
+            price = int(prices[i]) if i < len(prices) else SHOP_DEFAULT_PRICE
+            info = self.locations_info.get(ap_id)
+            if info is None:
+                entry = ShopEntry(shop_game_key(i), price, name="AP Item",
+                                  desc="An Archipelago item", checked=ap_id in checked)
+            else:
+                player = self.player_names.get(info.player, f"Player {info.player}")
+                item = self.item_names.lookup_in_slot(info.item, info.player)
+                name, desc = shop_texts(item, player, info.player == self.slot, info.flags)
+                entry = ShopEntry(shop_game_key(i), price, shop_look(info.flags), name, desc,
+                                  ap_id in checked)
+            entries.append(entry)
+        self.shop_cache = (key, entries)
+        return entries
+
+    # ---- map tracker ----
+    def update_map_ap(self) -> None:
+        """Give the map tracker the slot's locations by room and its torches, when they change."""
+        checked = frozenset(self.checked_locations | self.locations_checked)
+        key = (self.slot, len(self.server_locations), checked)
+        if key == self.map_ap_key:
+            return
+        self.map_ap_key = key
+        rooms: Dict[str, List] = {}
+        torches = []
+        if self.slot is not None:
+            for rec in LOCATIONS:
+                game_key = rec.get("game_key")
+                if game_key is None or game_key >= PICKUP_KEY_LIMIT or rec["ap_id"] not in self.server_locations:
+                    continue
+                rooms.setdefault(str(game_key // 64), []).append([rec["name"], rec["ap_id"] in checked])
+            for rec in TORCHES:
+                if rec["ap_id"] not in self.server_locations:
+                    continue
+                x, z = struct.unpack("<2f", struct.pack("<2I", rec["x_bits"], rec["z_bits"]))
+                torches.append({"name": rec["name"], "stage": rec["stage"], "room": rec["room"],
+                                "x": x, "z": z, "checked": rec["ap_id"] in checked})
+        self.map_tracker.set_ap({"slot": self.player_names.get(self.slot) if self.slot is not None else None,
+                                 "rooms": rooms, "torches": torches})
 
     # ---- helpers ----
     def game_items(self) -> List[Tuple[int, str]]:
@@ -184,8 +346,18 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
         vanilla = BASIC_SKILLS_MASK \
             if ctx.slot_data.get("basic_skills", BASIC_SKILLS_VANILLA) == BASIC_SKILLS_VANILLA else 0
         await asyncio.to_thread(game.set_skill_vanilla, vanilla)
-        qol = QOL_WOLFS_FOOT if ctx.slot_data.get("wolfs_foot_qol") else 0
+        qol = qol_wolfs_foot(ctx.slot_data.get("wolfs_foot_qol", 100))
         await asyncio.to_thread(game.set_qol, qol)
+        torch_keys = await asyncio.to_thread(game.sync_torches, ctx.torch_spots())
+        torch_keys += await asyncio.to_thread(game.sync_shop, ctx.shop_sanity(),
+                                              ctx.shop_vanilla(), ctx.shop_entries())
+        # torches broken / shop slots bought without an event we saw (while the client was away)
+        torch_locations = {ctx.key_to_location[k] for k in torch_keys if k in ctx.key_to_location}
+        torch_locations -= ctx.locations_checked
+        if torch_locations:
+            ctx.locations_checked |= torch_locations
+            if ctx.server:
+                await ctx.check_locations(torch_locations)
         await asyncio.to_thread(game.sync_items, ctx.game_items())
         status = await asyncio.to_thread(game.status)
         if not ctx.goal_sent and ctx.goal_reached(status.goal) and ctx.server:
@@ -199,6 +371,23 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
         if not await asyncio.to_thread(game.post_message, ctx.pending_popups[0]):
             break                      # queue full; try again next poll
         ctx.pending_popups.pop(0)
+
+    await map_tick(ctx, game)
+
+
+async def map_tick(ctx: LoIContext, game: LoIInterface) -> None:
+    """Feed the map tracker over this client's PINE connection, while the Map tab or /map's web
+    page is reading it."""
+    if not (ctx.map_tracker.enabled or ctx.map_tracker.server):
+        return
+    ctx.map_ticks += 1
+    if ctx.map_ticks % MAP_TICK_EVERY:
+        return
+    ctx.update_map_ap()
+    try:
+        await asyncio.to_thread(ctx.map_tracker.tick, game.mem)
+    except (MapShapeError, struct.error, ValueError, IndexError) as exc:
+        logger.debug(f"map tracker: {exc}")   # mid-load data; the next tick tries again
 
 
 async def deathlink_tick(ctx: LoIContext, game: LoIInterface, status: GameStatus) -> None:
@@ -226,13 +415,13 @@ async def game_loop(ctx: LoIContext) -> None:
                 ctx.reconnect_game = False
                 if pine:
                     pine.close()
-                pine = Pine(ctx.pine_slot)
+                pine = Pine(ctx.pine_slot, socket_path=ctx.pine_socket)
                 await asyncio.to_thread(pine.connect)
                 game = LoIInterface(pine)
                 await asyncio.to_thread(game.check_game)
                 ctx.last_deaths = None           # new session: don't send old deaths
-                ctx.game_state = f"connected on PINE slot {ctx.pine_slot}"
-                logger.info(f"Connected to Lament of Innocence in PCSX2 (PINE slot {ctx.pine_slot}).")
+                ctx.game_state = f"connected on PINE {pine.endpoint}"
+                logger.info(f"Connected to Lament of Innocence in PCSX2 (PINE {pine.endpoint}).")
             await game_tick(ctx, game)
             await asyncio.sleep(POLL_INTERVAL)
         except GameMismatch as exc:
@@ -245,10 +434,12 @@ async def game_loop(ctx: LoIContext) -> None:
             if game is not None or ctx.game_state.startswith("connected"):
                 logger.info(f"Lost PCSX2: {exc}. Retrying...")
             ctx.game_state = "not connected (start PCSX2 with PINE enabled)"
+            ctx.map_tracker.disconnected()
             game = None
             await asyncio.sleep(RECONNECT_INTERVAL)
     if pine:
         pine.close()
+    ctx.map_tracker.stop()
 
 
 def launch_client(*args) -> None:
@@ -261,9 +452,12 @@ def launch_client(*args) -> None:
         parser = get_base_parser(description="Lament of Innocence Archipelago client")
         parser.add_argument("--pine-slot", type=int, default=DEFAULT_SLOT,
                             help="PCSX2 PINE slot (port), default 28011")
+        parser.add_argument("--pine-socket", default=None,
+                            help="PCSX2 PINE Unix socket path (Linux/macOS); default: PCSX2's own")
         parsed, _ = parser.parse_known_args(args)
         ctx = LoIContext(parsed.connect, parsed.password)
         ctx.pine_slot = parsed.pine_slot
+        ctx.pine_socket = parsed.pine_socket
         ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
         if gui_enabled:
             ctx.run_gui()

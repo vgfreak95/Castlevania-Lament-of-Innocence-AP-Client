@@ -64,6 +64,23 @@ class TestRandomArea(AreaKeysBase):
         self.assertFalse(any(k in self.own_pool() for k in KEYS))
 
 
+class TestNoStartingKeys(AreaKeysBase):
+    options = {"area_keys": True, "starting_area": "dark_palace_of_waterfalls",
+               "starting_area_keys": 0}
+
+    def test_start_with_no_key(self) -> None:
+        self.assertFalse(any(n in KEYS for n in self.start()))
+        pool = self.own_pool()
+        for key in KEYS:
+            self.assertEqual(pool.count(key), 1, key)
+
+    def test_only_hub_and_prison_open(self) -> None:
+        self.assertTrue(self.can_reach_location("PttDA: Potion"))
+        self.assertTrue(self.can_reach_location("PoET: High Potion"))
+        for area, loc in AREA_LOCATION.items():
+            self.assertFalse(self.can_reach_location(loc), area)
+
+
 class TestAreaKeysOff(AreaKeysBase):
     options = {"area_keys": False}
 
