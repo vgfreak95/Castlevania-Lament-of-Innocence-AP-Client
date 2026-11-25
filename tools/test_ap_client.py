@@ -592,5 +592,170 @@ class TorchTests(unittest.TestCase):
         self.assertEqual(self.table.entries()[1][4], 0x10055)
 
 
+def shop_slots(n, checked=(), price=500):
+    return [gi.ShopEntry(gi.shop_game_key(i), price + i, i % 3, f"Item {i}", f"Item {i}\nfor you",
+                         checked=i in checked)
+            for i in range(n)]
+
+
+class ShopTableModel:
+    """What src/apshop.c and pickup.c see of the shop table."""
+
+    def __init__(self, ram):
+        self.ram = ram
+
+    def header(self):
+        return gi.SHOP_HEADER.unpack_from(self.ram, gi.SHOP_TABLE)
+
+    def slots(self):
+        magic, count = self.header()[:2]
+        if magic != gi.SHOP_TABLE_MAGIC:
+            return None
+        base = gi.SHOP_TABLE + gi.SHOP_HEADER.size
+        return [gi.SHOP_SLOT.unpack_from(self.ram, base + i * gi.SHOP_SLOT.size)
+                for i in range(count)]
+
+    def buy(self, i):
+        """shop_buy_hook: checked and report set, checked_seq bumped."""
+        addr = gi.SHOP_TABLE + gi.SHOP_HEADER.size + i * gi.SHOP_SLOT.size
+        struct.pack_into("<2I", self.ram, addr + gi.SHOP_CHECKED_OFFSET, 1, 1)
+        seq_addr = gi.SHOP_TABLE + 12
+        struct.pack_into("<I", self.ram, seq_addr, struct.unpack_from("<I", self.ram, seq_addr)[0] + 1)
+
+
+class ShopTests(unittest.TestCase):
+    def setUp(self):
+        self.game, _, self.iface, self.sock = make_session()
+        self.table = ShopTableModel(self.game.ram)
+
+    def test_layout_matches_c(self):
+        self.assertEqual(gi.SHOP_SLOT.size, 224)            # apshop.h ShopSlot
+        self.assertEqual(gi.SHOP_HEADER.size, 32)
+        end = gi.SHOP_TABLE + gi.SHOP_HEADER.size + gi.SHOP_SLOTS_MAX * gi.SHOP_SLOT.size
+        self.assertEqual(end, 0xB7820)
+        self.assertLessEqual(end, 0xB7F00)                   # the debug menu's map mailbox
+        self.assertEqual(gi.SHOP_VANILLA_ALL, 0x7FFF)
+        self.assertEqual(len(gi.SHOP_VANILLA_ITEMS), 15)
+        # game_keys clear of pickups (room_key * 64 + flag), boss rewards and torches
+        self.assertGreater(gi.SHOP_KEY_BASE, 0x10000 + gi.TORCH_TABLE_MAX)
+        self.assertLess(gi.SHOP_EVENT_ID, gi.SHOP_KEY_BASE)
+
+    def test_writes_table(self):
+        self.assertEqual(self.iface.sync_shop(True, 0x1234, shop_slots(3, checked={1})), [])
+        magic, count, vanilla = self.table.header()[:3]
+        self.assertEqual((magic, count, vanilla), (gi.SHOP_TABLE_MAGIC, 3, 0x1234))
+        rows = self.table.slots()
+        self.assertEqual(rows[0][:5], (0x20000, 500, 0, 0, 0))
+        self.assertEqual(rows[1][3], 1)
+        self.assertEqual(rows[2][8].split(b"\0")[0], b"Item 2")
+        self.assertEqual(rows[2][9].split(b"\0")[0], b"Item 2\nfor you")
+
+    def test_prices_are_clamped(self):
+        slots = [gi.ShopEntry(0x20000, 0), gi.ShopEntry(0x20001, 99999)]
+        self.iface.sync_shop(True, 0, slots)
+        self.assertEqual([r[1] for r in self.table.slots()], [gi.SHOP_PRICE_MIN, gi.SHOP_PRICE_MAX])
+
+    def test_disabled_clears_table(self):
+        self.iface.sync_shop(True, 0, shop_slots(2))
+        self.iface.sync_shop(False, 0, [])
+        self.assertIsNone(self.table.slots())
+
+    def test_no_slots_still_sets_vanilla(self):
+        self.iface.sync_shop(True, 0x0003, [])
+        self.assertEqual(self.table.header()[:3], (gi.SHOP_TABLE_MAGIC, 0, 0x0003))
+
+    def test_new_check_sets_flag_without_rewrite(self):
+        self.iface.sync_shop(True, 0, shop_slots(4))
+        before = self.sock.requests
+        self.iface.sync_shop(True, 0, shop_slots(4, checked={2}))
+        self.assertEqual(self.table.slots()[2][3], 1)
+        self.assertLessEqual(self.sock.requests - before, 2)   # header read + one flag write
+
+    def test_bought_slot_is_reported(self):
+        self.iface.sync_shop(True, 0, shop_slots(4))
+        self.table.buy(1)
+        self.assertEqual(self.iface.sync_shop(True, 0, shop_slots(4)), [0x20001])
+        self.assertEqual(self.iface.sync_shop(True, 0, shop_slots(4)), [])
+        self.assertEqual(self.iface.sync_shop(True, 0, shop_slots(4, checked={1})), [])
+        self.assertEqual(self.table.slots()[1][3], 1)
+
+    def test_purchase_survives_layout_change(self):
+        """Bought, then the layout changes before a poll saw it (e.g. scout names arrive): the
+        purchase is still returned, and kept checked in the new table."""
+        old = [gi.ShopEntry(0x20000 + i, 100) for i in range(3)]
+        self.iface.sync_shop(True, 0, old)
+        self.table.buy(2)
+        new = [gi.ShopEntry(0x20000 + i, 100, name=f"Real {i}") for i in range(3)]
+        self.assertEqual(self.iface.sync_shop(True, 0, new), [])        # texts differ: not ours
+        old_again = [gi.ShopEntry(0x20000 + i, 100) for i in range(3)]
+        self.iface.sync_shop(True, 0, old_again)
+        self.table.buy(0)
+        changed_vanilla = old_again
+        self.assertEqual(self.iface.sync_shop(True, 0x1, changed_vanilla), [0x20000])
+        self.assertEqual(self.table.slots()[0][3], 1)
+        self.assertEqual(self.table.header()[2], 0x1)
+
+    def test_other_tables_flag_is_not_a_check(self):
+        """A save state with another seed's shop (same game_keys, other texts): no checks."""
+        self.iface.sync_shop(True, 0, shop_slots(3))
+        other = gi.ShopEntry(0x20001, 777, name="Other seed", checked=True).entry()
+        base = gi.SHOP_TABLE + gi.SHOP_HEADER.size
+        self.game.ram[base + gi.SHOP_SLOT.size:base + 2 * gi.SHOP_SLOT.size] = other
+        struct.pack_into("<I", self.game.ram, gi.SHOP_TABLE + 12, 9)
+        self.assertEqual(self.iface.sync_shop(True, 0, shop_slots(3)), [])
+        self.assertEqual(self.table.slots()[1][:4], (0x20001, 501, 1, 0))
+
+    def test_console_reset_rewrites(self):
+        self.iface.sync_shop(True, 0x7FFF, shop_slots(3, checked={0}))
+        self.game.ram[gi.SHOP_TABLE:gi.SHOP_TABLE + 0x400] = bytes(0x400)
+        self.iface.sync_shop(True, 0x7FFF, shop_slots(3, checked={0}))
+        rows = self.table.slots()
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[0][3], 1)
+
+    def test_save_state_with_older_table_is_fixed(self):
+        self.iface.sync_shop(True, 0, shop_slots(3))
+        snap = self.game.snapshot()
+        self.iface.sync_shop(True, 0, shop_slots(3, checked={2}))
+        self.game.restore(snap)                   # the table loses slot 2's flag
+        for _ in range(gi.SHOP_VERIFY_POLLS):
+            self.iface.sync_shop(True, 0, shop_slots(3, checked={2}))
+        self.assertEqual(self.table.slots()[2][3], 1)
+
+    def test_event_for_shop_key_is_a_location(self):
+        self.iface.sync_shop(True, 0, shop_slots(2))
+        self.game.post_event(gi.EV_LOCATION, gi.SHOP_EVENT_ID + 1, gi.shop_game_key(1), b"Item 1")
+        ev = self.iface.poll_events()[-1]
+        self.assertEqual((ev.kind, ev.location, ev.item), (gi.EV_LOCATION, 0x20001, 0x101))
+
+    def test_texts(self):
+        name, desc = gi.shop_texts("Hookshot", "Alice", False, gi.AP_FLAG_PROGRESSION)
+        self.assertEqual(name, "Alice's Hookshot")
+        self.assertEqual(desc, "Hookshot\nfor Alice (progression)")
+        name, _ = gi.shop_texts("Progressive Sword Upgrade", "Bob", False, 0)
+        self.assertLessEqual(len(name), gi.SHOP_NAME_CHARS)
+        self.assertTrue(name.startswith("Progressive Sw") and name.endswith(".."))
+        name, desc = gi.shop_texts("Whip of Flames", "Leon", True, gi.AP_FLAG_USEFUL)
+        self.assertEqual(name, "Whip of Flames")
+        self.assertTrue(desc.endswith("for you (useful)"))
+        name, _ = gi.shop_texts("^C80ff0000Red^c", "x", True, 0)
+        self.assertNotIn("^", name)
+        for line in gi.shop_texts("A" * 100, "B" * 100, False, 0)[1].split("\n"):
+            self.assertLessEqual(len(line), gi.SHOP_DESC_CHARS)
+
+    def test_looks(self):
+        self.assertEqual(gi.shop_look(gi.AP_FLAG_PROGRESSION | gi.AP_FLAG_USEFUL),
+                         gi.SHOP_LOOK_PROGRESSION)
+        self.assertEqual(gi.shop_look(gi.AP_FLAG_USEFUL), gi.SHOP_LOOK_USEFUL)
+        self.assertEqual(gi.shop_look(gi.AP_FLAG_TRAP), gi.SHOP_LOOK_FILLER)
+        self.assertEqual(gi.shop_look(0), gi.SHOP_LOOK_FILLER)
+
+    def test_long_text_is_cut_to_the_c_buffers(self):
+        e = gi.ShopEntry(0x20000, 10, name="N" * 100, desc="D" * 500).entry()
+        _, _, _, _, _, _, _, _, name, desc = gi.SHOP_SLOT.unpack(e)
+        self.assertEqual(name[-1], 0)              # NUL-terminated in 32 bytes
+        self.assertEqual(desc[-1], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

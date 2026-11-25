@@ -97,6 +97,8 @@ client is connected, and is kept on your PC, so nothing from the game ships with
   plus the rewards of 9 bosses: the five area bosses, the three Elementals and the Forgotten One.
   With **Torch Sanity** on, every breakable torch is a location too: an unchecked torch burns
   red, and breaking it checks the location (it drops nothing).
+  With **Shop Sanity** on, Rinaldo's shop sells 20 to 35 locations (one for every row that
+  isn't kept as a vanilla shop item), each bought once.
 - **Items:** whips (except the starting Whip of Alchemy), the five keys, tablets, Dragon Crest,
   Unlock Jewel, Curtain Time Bell, all seven orbs, armour, accessories and relics (including
   shop items), HP/Heart/MP Max Ups and filler (potions, hearts, money, food).

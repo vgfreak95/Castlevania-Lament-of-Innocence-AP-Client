@@ -77,3 +77,4 @@ Player_GetFacing     = 0x00460C30;
 Player_ResetState    = 0x00462C18;
 Torch_CreateFlame    = 0x00683788;
 Item_GetKind         = 0x006B7B10;
+Shop_BuildList       = 0x006E0FE8;

@@ -35,7 +35,7 @@ typedef struct {
 
 #define AP_STATUS ((volatile ApStatus *)0x000FCF00)
 #define AP_STATUS_MAGIC     0x54535041   /* "APST" */
-#define AP_PROTOCOL_VERSION 7   /* 7: torch table (torches.h) */
+#define AP_PROTOCOL_VERSION 8   /* 7: torch table (torches.h); 8: shop table (apshop.h) */
 #define AP_SCAN_ACTIVE      0x4E414353   /* "SCAN" */
 
 #define GOAL_WALTER 0x1     /* Walter beaten: went from his room straight into Death's */
@@ -52,7 +52,8 @@ typedef struct {
  * game_key is BOSS_KEY_BASE + index; placed items use room_key * 64 + flag (< 416 * 64). */
 #define BOSS_KEY_BASE 0x8000
 
-/* Other game_keys: torches TORCH_KEY_BASE 0x10000 + n (torches.h). Fixed table in the cave:
- * torch table 0xC0000 (torches.h). */
+/* Other game_keys: torches TORCH_KEY_BASE 0x10000 + n (torches.h), Shop Sanity slots
+ * SHOP_KEY_BASE 0x20000 + slot (apshop.h). Fixed tables in the cave: torch table 0xC0000
+ * (torches.h), shop table 0xB4000-0xB7820 (apshop.h). */
 
 #endif

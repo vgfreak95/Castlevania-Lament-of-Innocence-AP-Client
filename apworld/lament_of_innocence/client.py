@@ -21,9 +21,10 @@ from CommonClient import (ClientCommandProcessor, CommonContext, get_base_parser
 from NetUtils import ClientStatus, NetworkItem
 
 from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS, TORCHES
-from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, qol_wolfs_foot, GameMismatch,
-                             GameStatus, LoIInterface, TorchSpot, build_key_map,
-                             resolve_progressive)
+from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, SHOP_SLOTS_MAX,
+                             SHOP_VANILLA_ALL, qol_wolfs_foot, GameMismatch, GameStatus,
+                             LoIInterface, ShopEntry, TorchSpot, build_key_map,
+                             resolve_progressive, shop_game_key, shop_look, shop_texts)
 from .mapshapes import MapShapeError
 from .pine import DEFAULT_SLOT, Pine, PineError
 from .tracker import MapTracker
@@ -35,6 +36,8 @@ ALL_AREA_LOCKS = 0x1F         # the five hub areas (items.py AREA_KEYS), src/sta
 BASIC_SKILLS_VANILLA = 0      # options.py BasicSkills.option_vanilla
 BASIC_SKILLS_MASK = 0x5000    # Quick Step | Perfect Guard (items.py BASIC_SKILLS_MASK, src/skills.h)
 TORCH_SANITY_OFF = 0          # options.py TorchSanity.option_off
+SHOP_SANITY_OFF = 0           # slot_data["shop_sanity"]: 0 = vanilla shop
+SHOP_DEFAULT_PRICE = 1000     # an AP shop slot without a price in slot_data
 MAP_TICK_EVERY = 2            # game polls per map tracker update (5 per second)
 PICKUP_KEY_LIMIT = 0x8000     # game_keys below this are room_key * 64 + index (boss rewards above)
 
@@ -96,7 +99,8 @@ class LoIContext(CommonContext):
         self.popups = True
         self.game_state = "not connected"
         self.slot_data: Dict = {}
-        self.key_to_location: Dict[int, int] = build_key_map(LOCATIONS + TORCHES)
+        self.base_key_to_location: Dict[int, int] = build_key_map(LOCATIONS + TORCHES)
+        self.key_to_location: Dict[int, int] = dict(self.base_key_to_location)
         self.location_to_key: Dict[int, int] = {v: k for k, v in self.key_to_location.items()}
         self.ap_to_game_item: Dict[int, int] = {rec["ap_id"]: rec["game_id"] for rec in ITEMS}
         self.unknown_keys: Set[int] = set()
@@ -106,6 +110,8 @@ class LoIContext(CommonContext):
         self.pending_kills = 0                   # received DeathLinks not yet passed to the game
         # ((slot torch count, checked torch ap_ids), torch table) last built
         self.torch_spots_cache: Optional[Tuple[Tuple[int, frozenset], List[TorchSpot]]] = None
+        # (checked shop ap_ids, scouted shop ap_ids, slot names), shop table last built
+        self.shop_cache: Optional[Tuple[tuple, List[ShopEntry]]] = None
         self.map_tracker = MapTracker(Path(Utils.cache_path("lament_of_innocence", "maps")))
         self.map_ticks = 0
         self.map_ap_key: Optional[tuple] = None   # what the tracker's AP view was built from
@@ -139,6 +145,8 @@ class LoIContext(CommonContext):
             self.slot_data = args.get("slot_data") or {}
             self.goal_sent = False
             self.torch_spots_cache = None
+            self.shop_cache = None
+            self.setup_shop()
             asyncio.create_task(self.update_death_link(bool(self.slot_data.get("death_link"))))
         elif cmd == "PrintJSON" and self.popups:
             self._queue_sent_popup(args)
@@ -150,6 +158,7 @@ class LoIContext(CommonContext):
     async def disconnect(self, allow_autoreconnect: bool = False):
         self.slot_data = {}
         self.torch_spots_cache = None
+        self.shop_cache = None
         await super().disconnect(allow_autoreconnect)
 
     # ---- Torch Sanity ----
@@ -172,6 +181,65 @@ class LoIContext(CommonContext):
                  for rec in TORCHES if rec["ap_id"] in slot_torches]
         self.torch_spots_cache = ((len(slot_torches), checked), spots)
         return spots
+
+    # ---- Shop Sanity ----
+    # slot_data: "shop_sanity" (0 off), "shop_vanilla" (bit i = SHOP_VANILLA_ITEMS[i] stays on
+    # sale), "shop_locations" (AP location IDs, slot i = game_key SHOP_KEY_BASE + i) and
+    # "shop_prices" (gold, same order).
+    def shop_sanity(self) -> bool:
+        return self.slot_data.get("shop_sanity", SHOP_SANITY_OFF) != SHOP_SANITY_OFF
+
+    def shop_locations(self) -> List[int]:
+        if not self.shop_sanity():
+            return []
+        return [int(x) for x in self.slot_data.get("shop_locations") or []][:SHOP_SLOTS_MAX]
+
+    def shop_vanilla(self) -> int:
+        if not self.shop_sanity():
+            return SHOP_VANILLA_ALL
+        return int(self.slot_data.get("shop_vanilla", SHOP_VANILLA_ALL)) & SHOP_VANILLA_ALL
+
+    def setup_shop(self) -> None:
+        """On Connected: map the shop slots' game_keys and scout what they hold (no hints), for
+        the names the shop shows."""
+        self.key_to_location = dict(self.base_key_to_location)
+        locations = self.shop_locations()
+        for i, ap_id in enumerate(locations):
+            self.key_to_location[shop_game_key(i)] = ap_id
+        self.location_to_key = {v: k for k, v in self.key_to_location.items()}
+        if locations:
+            asyncio.create_task(self.send_msgs([{"cmd": "LocationScouts", "locations": locations,
+                                                 "create_as_hint": 0}]))
+
+    def shop_entries(self) -> List[ShopEntry]:
+        """The game's shop table: every AP shop slot, checked or not, with the price and the text
+        of what it holds (a placeholder until the scout answer is in)."""
+        locations = self.shop_locations()
+        if not locations or self.slot is None:
+            return []
+        checked_all = self.checked_locations | self.locations_checked
+        checked = frozenset(a for a in locations if a in checked_all)
+        scouted = frozenset(a for a in locations if a in self.locations_info)
+        key = (checked, scouted, len(self.player_names))
+        if self.shop_cache and self.shop_cache[0] == key:
+            return self.shop_cache[1]
+        prices = list(self.slot_data.get("shop_prices") or [])
+        entries = []
+        for i, ap_id in enumerate(locations):
+            price = int(prices[i]) if i < len(prices) else SHOP_DEFAULT_PRICE
+            info = self.locations_info.get(ap_id)
+            if info is None:
+                entry = ShopEntry(shop_game_key(i), price, name="AP Item",
+                                  desc="An Archipelago item", checked=ap_id in checked)
+            else:
+                player = self.player_names.get(info.player, f"Player {info.player}")
+                item = self.item_names.lookup_in_slot(info.item, info.player)
+                name, desc = shop_texts(item, player, info.player == self.slot, info.flags)
+                entry = ShopEntry(shop_game_key(i), price, shop_look(info.flags), name, desc,
+                                  ap_id in checked)
+            entries.append(entry)
+        self.shop_cache = (key, entries)
+        return entries
 
     # ---- map tracker ----
     def update_map_ap(self) -> None:
@@ -269,7 +337,9 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
         qol = qol_wolfs_foot(ctx.slot_data.get("wolfs_foot_qol", 100))
         await asyncio.to_thread(game.set_qol, qol)
         torch_keys = await asyncio.to_thread(game.sync_torches, ctx.torch_spots())
-        # torches broken without an event we saw (while the client was away)
+        torch_keys += await asyncio.to_thread(game.sync_shop, ctx.shop_sanity(),
+                                              ctx.shop_vanilla(), ctx.shop_entries())
+        # torches broken / shop slots bought without an event we saw (while the client was away)
         torch_locations = {ctx.key_to_location[k] for k in torch_keys if k in ctx.key_to_location}
         torch_locations -= ctx.locations_checked
         if torch_locations:

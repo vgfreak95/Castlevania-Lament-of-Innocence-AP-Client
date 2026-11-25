@@ -4,6 +4,7 @@
  *   Location ID = GetRoomKey(stage, room) * 64 + collected-flag index (0-63 per room).
  * - Torch Sanity (torches.c): breaking a red torch checks its location (TORCH_CHECKS, reported
  *   by torch_checks_tick below); it drops nothing.
+ * - Shop Sanity (apshop.c): a bought AP shop slot is reported by shop_checks_tick below.
  * - Everything else (candle/enemy drops, swapped sub-weapon) stays vanilla and is just logged.
  * - Items sent by the AP server arrive in a ring at 0xFE000 (written by the client) and are given
  *   one per frame with a small "Received X from Y" notice at the bottom right (toast.c, no message
@@ -28,6 +29,7 @@
 #include "traps.h"
 #include "torches.h"
 #include "toast.h"
+#include "apshop.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -70,18 +72,29 @@ static void copy_text(volatile char *dst, const char *src, int size)
     dst[i] = '\0';
 }
 
+/* name (or description) of an event's item: SHOP_EVENT_ID + n = Shop Sanity slot n (apshop.h) */
+static const char *event_text(int id, int desc)
+{
+    if (id >= SHOP_EVENT_ID && id < SHOP_EVENT_ID + SHOP_SLOTS_MAX) {
+        volatile ShopSlot *s = &SHOP_TABLE->slot[id - SHOP_EVENT_ID];
+        return desc ? (const char *)s->desc : (const char *)s->name;
+    }
+    return desc ? Item_GetDescText(id) : Item_GetNameText(id);
+}
+
 static void post_event(int kind, int id, int location)
 {
     volatile PickupMailbox *mb = MAILBOX;
     u32 seq = mb->magic == MAILBOX_MAGIC ? mb->write_seq : 0;
     volatile PickupEvent *ev = &mb->ev[seq % MAILBOX_SLOTS];
+    const char *name = event_text(id, 0);
 
     ev->seq = seq;
     ev->kind = kind;
     ev->id = id;
     ev->location = location;
-    copy_text(ev->name, Item_GetNameText(id), sizeof(ev->name));
-    copy_text(ev->desc, Item_GetDescText(id), sizeof(ev->desc));
+    copy_text(ev->name, name, sizeof(ev->name));
+    copy_text(ev->desc, event_text(id, 1), sizeof(ev->desc));
 
     mb->slot_count = MAILBOX_SLOTS;
     mb->slot_size = sizeof(PickupEvent);
@@ -89,9 +102,9 @@ static void post_event(int kind, int id, int location)
     mb->write_seq = seq + 1;    /* last: the client only reads events below write_seq */
 
     if (kind == EV_LOCATION)
-        GamePrintf("[pickup] #%d location %d (vanilla item %02X %s)\n", seq, location, id, Item_GetNameText(id));
+        GamePrintf("[pickup] #%d location %d (vanilla item %02X %s)\n", seq, location, id, name);
     else
-        GamePrintf("[pickup] #%d item %02X %s\n", seq, id, Item_GetNameText(id));
+        GamePrintf("[pickup] #%d item %02X %s\n", seq, id, name);
 }
 
 /* ---- spawn side ---- */
@@ -283,7 +296,7 @@ static void report_location(int vanilla, int location)
     post_event(EV_LOCATION, vanilla, location);
     if (!client_active()) {
         GameSprintf(text, "^C80ff8080AP Location^c\nLocation %d checked\n(was: %s)",
-                    location, Item_GetNameText(vanilla));
+                    location, event_text(vanilla, 0));
         msg_post(text);
     }
 }
@@ -458,6 +471,23 @@ static void torch_checks_tick(void)
     }
 }
 
+/* ---- Shop Sanity ----
+ * A bought AP shop slot (apshop.c, Minimap patch) has its `report` word set; reported here. */
+static void shop_checks_tick(void)
+{
+    volatile ShopTable *t = SHOP_TABLE;
+    int n, i;
+
+    if (t->magic != SHOP_TABLE_MAGIC)
+        return;
+    n = t->count < SHOP_SLOTS_MAX ? (int)t->count : SHOP_SLOTS_MAX;
+    for (i = 0; i < n; i++)
+        if (t->slot[i].report) {
+            t->slot[i].report = 0;
+            report_location(SHOP_EVENT_ID + i, t->slot[i].game_key);
+        }
+}
+
 static void recv_tick(void)
 {
     volatile RecvQueue *q = RECVQ;
@@ -593,6 +623,7 @@ void frame_end_hook(void)
     shop_frame();
     stagekeys_frame();       /* before recv_tick: received area keys need their item records */
     torch_checks_tick();
+    shop_checks_tick();
     recv_tick();
     msgbox_tick();
 }

@@ -29,3 +29,4 @@ TORCH_BASE_ID = 207350000
 TORCH_KEY_BASE = 0x10000
 TORCHES: List[Dict[str, Any]] = _load("torches.json")
 
+# Shop Sanity locations: ap_id = SHOP_BASE_ID (207380000) + slot, no data file (shop.py)

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from Options import (Choice, DeathLink, DefaultOnToggle, PerGameCommonOptions, Range, Toggle,
-                     Visibility)
+from Options import (Choice, DeathLink, DefaultOnToggle, OptionGroup, PerGameCommonOptions, Range,
+                     Toggle, Visibility)
 
 
 class Goal(Choice):
@@ -150,6 +150,131 @@ class TorchSanity(Choice):
     default = 0
 
 
+class ShopSanity(Toggle):
+    """Rinaldo's shop sells Archipelago locations. His shop has 35 rows: the vanilla items kept
+    on sale by the "Shop Sells" options below take theirs, and every other row is a location
+    (20 to 35 of them) that holds any item, from this world or another, and can be bought once.
+    The Buy list shows 20 of them at a time; the next ones appear as you buy them. A bought
+    location stays sold out. Gold isn't part of the logic: every location only needs the shop."""
+    display_name = "Shop Sanity"
+
+
+class ShopPrices(Choice):
+    """With Shop Sanity: what the location rows cost (the kept vanilla items keep their vanilla
+    prices).
+    custom: a random price from 10 gold up to Shop Custom Price each.
+    affordable: a random price from 10 to 500 gold each.
+    normal: a random price from 500 to 2000 gold each.
+    unaffordable: a random price from 1000 to 5000 gold each.
+    Prices are multiples of 10 gold."""
+    display_name = "Shop Prices"
+    option_custom = 0
+    option_affordable = 1
+    option_normal = 2
+    option_unaffordable = 3
+    default = 2
+
+
+class ShopCustomPrice(Range):
+    """With Shop Sanity and Shop Prices custom: the most a location row can cost, in gold. Each
+    row gets a random price, a multiple of 10, from 10 up to this; below 10, every row costs
+    exactly this (2 is the least the shop charges)."""
+    display_name = "Shop Custom Price"
+    range_start = 2
+    range_end = 10000
+    default = 1000
+
+
+class ShopPotion(DefaultOnToggle):
+    """With Shop Sanity: the Potion stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Potion"
+
+
+class ShopHighPotion(DefaultOnToggle):
+    """With Shop Sanity: the High Potion stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells High Potion"
+
+
+class ShopSerum(DefaultOnToggle):
+    """With Shop Sanity: the Serum stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Serum"
+
+
+class ShopUncursePotion(DefaultOnToggle):
+    """With Shop Sanity: the Uncurse Potion stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Uncurse Potion"
+
+
+class ShopMagicalTicket(DefaultOnToggle):
+    """With Shop Sanity: the Magical Ticket stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Magical Ticket"
+
+
+class ShopMemorialTicket(DefaultOnToggle):
+    """With Shop Sanity: the Memorial Ticket stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Memorial Ticket"
+
+
+class ShopDiamond(DefaultOnToggle):
+    """With Shop Sanity: the Diamond stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Diamond"
+
+
+class ShopRuby(DefaultOnToggle):
+    """With Shop Sanity: the Ruby stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Ruby"
+
+
+class ShopSapphire(DefaultOnToggle):
+    """With Shop Sanity: the Sapphire stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Sapphire"
+
+
+class ShopOpal(DefaultOnToggle):
+    """With Shop Sanity: the Opal stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Opal"
+
+
+class ShopTurquoise(DefaultOnToggle):
+    """With Shop Sanity: the Turquoise stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Turquoise"
+
+
+class ShopZircon(DefaultOnToggle):
+    """With Shop Sanity: the Zircon stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Zircon"
+
+
+class ShopMusicBox(DefaultOnToggle):
+    """With Shop Sanity: the Music Box stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Music Box"
+
+
+class ShopSacrificialDoll(DefaultOnToggle):
+    """With Shop Sanity: the Sacrificial Doll stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells Sacrificial Doll"
+
+
+class ShopWhiteBishop(DefaultOnToggle):
+    """With Shop Sanity: the White Bishop stays on sale in Rinaldo's shop, as in the vanilla game. Off:
+    its row becomes one more Archipelago location."""
+    display_name = "Shop Sells White Bishop"
+
+
 class EnemyDropSanity(Toggle):
     """NOT IMPLEMENTED YET: add enemy common/rare drops as locations. Ignored for now."""
     display_name = "Enemy Drop Sanity (not implemented)"
@@ -181,4 +306,72 @@ class LoIOptions(PerGameCommonOptions):
     knockback_trap_weight: KnockbackTrapWeight
     poison_trap_weight: PoisonTrapWeight
     torch_sanity: TorchSanity
+    shop_sanity: ShopSanity
+    shop_prices: ShopPrices
+    shop_custom_price: ShopCustomPrice
+    shop_potion: ShopPotion
+    shop_high_potion: ShopHighPotion
+    shop_serum: ShopSerum
+    shop_uncurse_potion: ShopUncursePotion
+    shop_magical_ticket: ShopMagicalTicket
+    shop_memorial_ticket: ShopMemorialTicket
+    shop_diamond: ShopDiamond
+    shop_ruby: ShopRuby
+    shop_sapphire: ShopSapphire
+    shop_opal: ShopOpal
+    shop_turquoise: ShopTurquoise
+    shop_zircon: ShopZircon
+    shop_music_box: ShopMusicBox
+    shop_sacrificial_doll: ShopSacrificialDoll
+    shop_white_bishop: ShopWhiteBishop
     enemy_drop_sanity: EnemyDropSanity
+
+
+# Sections (drop-downs) on the WebHost options pages and in generated YAMLs. Options not listed
+# here (Death Link) stay in the default "Game Options" section.
+option_groups = [
+    OptionGroup("Starting and Goal", [
+        Goal,
+        StartingArea,
+        StartingAreaKeys,
+        BasicSkills,
+    ]),
+    OptionGroup("Shuffles", [
+        AreaKeys,
+        TorchSanity,
+        EnemyDropSanity,
+    ]),
+    OptionGroup("Quality of Life", [
+        ProgressiveBrooch,
+        ProgressivePlates,
+        WolfsFootQoL,
+    ]),
+    OptionGroup("Shop Sanity", [
+        ShopSanity,
+        ShopPrices,
+        ShopCustomPrice,
+        ShopPotion,
+        ShopHighPotion,
+        ShopSerum,
+        ShopUncursePotion,
+        ShopMagicalTicket,
+        ShopMemorialTicket,
+        ShopDiamond,
+        ShopRuby,
+        ShopSapphire,
+        ShopOpal,
+        ShopTurquoise,
+        ShopZircon,
+        ShopMusicBox,
+        ShopSacrificialDoll,
+        ShopWhiteBishop,
+    ]),
+    OptionGroup("Traps", [
+        TrapChance,
+        ParalysisTrapWeight,
+        CurseTrapWeight,
+        StoneTrapWeight,
+        KnockbackTrapWeight,
+        PoisonTrapWeight,
+    ]),
+]

@@ -71,9 +71,9 @@ hooks = [
 
 [patch.minimap]
 title = "Archipelago Menu and Minimap"
-description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups. Tap L3 to show/hide it; hold L3 for the Archipelago Menu (Minimap Options). Rinaldo's shop sells the Savewarp Ticket (2000 gold, one per game, reusable in save rooms)."
+description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups. Tap L3 to show/hide it; hold L3 for the Archipelago Menu (Minimap Options). Rinaldo's shop sells the Savewarp Ticket (2000 gold, one per game, reusable in save rooms). Shop Sanity: AP locations on Rinaldo's Buy list (table at 0xB4000, written by the AP client); buying one checks it."
 base = 0x000E0000
-sources = ["src/minimap.c", "src/apmenu.c", "src/savewarps.c", "src/ticket.c"]
+sources = ["src/minimap.c", "src/apmenu.c", "src/savewarps.c", "src/ticket.c", "src/apshop.c"]
 hooks = [
     { site = 0x00439EC8, original = 0x0C11820A, function = "minimap_hook" },       # jal Player_UpdateStep in GameplayFrame case 0 (skipped while frozen)
     { site = 0x00439F00, original = 0x0C1109CC, function = "apmenu_hook" },        # jal Obj_UpdateAll in GameplayFrame case 0 (runs while frozen): L3, Archipelago Menu
@@ -90,6 +90,10 @@ hooks = [
     { site = 0x00443C9C, original = 0x0C11154A, function = "text_code_hook" },      # (glyph drawer)
     { site = 0x00444D7C, original = 0x0C11154A, function = "text_code_hook" },      # (second glyph drawer)
     { site = 0x004451E4, original = 0x0C11154A, function = "text_code_hook" },      # (text measuring)
+    # Shop Sanity (src/apshop.c, table at 0xB4000)
+    { site = 0x006E1348, original = 0x0C1B83FA, function = "shop_list_hook" },      # jal Shop_BuildList when the shop menu opens
+    { site = 0x006E1484, original = 0x0C1B83FA, function = "shop_list_hook" },      # (rebuilt after a purchase)
+    { site = 0x006E1AEC, original = 0x0C11A3EE, function = "shop_buy_hook" },       # jal Inv_AddItem in the Buy side of a purchase
 ]
 
 # ---- pnach files ----
@@ -100,4 +104,4 @@ hooks = [
 dir = "build"
 patches = ["pickup", "minimap", "torches"]
 # one group for users to turn on (each [patch.*] title/description is then only a comment)
-group = { title = "Archipelago", description = "Castlevania: Lament of Innocence Archipelago patch for the AP client (PINE slot 28011): pickups, boss rewards, torches (Torch Sanity, red flame) become AP locations, received items show a small notice in the bottom-right corner, plus traps, area keys, whip skills and QoL options. Top-right minimap of the visited rooms (tap L3 to show/hide, hold L3 for the Archipelago Menu) and the Savewarp Ticket in Rinaldo's shop." }
+group = { title = "Archipelago", description = "Castlevania: Lament of Innocence Archipelago patch for the AP client (PINE slot 28011): pickups, boss rewards, torches (Torch Sanity, red flame) and Rinaldo's shop (Shop Sanity) become AP locations, received items show a small notice in the bottom-right corner, plus traps, area keys, whip skills and QoL options. Top-right minimap of the visited rooms (tap L3 to show/hide, hold L3 for the Archipelago Menu) and the Savewarp Ticket in Rinaldo's shop." }

@@ -6,6 +6,7 @@ Every unique floor pickup (112 of them, from the Prelude to the Prison of Eterna
 reward of nine bosses (the five area bosses, the three Elementals and the Forgotten One) become
 Archipelago locations. Picking one up, or beating the boss, sends a check; the item you receive
 comes from the multiworld.
+With [Shop Sanity](#shop-sanity), Rinaldo's shop sells locations too.
 
 The game runs on an unmodified ISO with runtime patches, so every vanilla gate is still there:
 the key doors, the e Tablet door, the Curtain Time Bell, the Unlock Jewel door, the Pagoda seal and
@@ -34,6 +35,37 @@ The Svarog Statue is shuffled like any other relic, and you don't start with it.
 tutorial Golden Knight, which normally only takes damage from the Svarog Statue's flames, can be
 beaten with the whip or a sub-weapon. Getting the Svarog Statue no longer equips it, so the relic
 you have equipped stays.
+
+## Shop Sanity
+
+With `shop_sanity` on (the default is off), Rinaldo's shop sells Archipelago locations. Each one
+holds any item, from this world or another (progression included), and can be bought once.
+
+- Rinaldo's stock has 35 rows. Each of his 15 vanilla shop items has its own option, on by
+  default, that keeps it on sale at its vanilla price: `shop_potion`, `shop_high_potion`,
+  `shop_serum`, `shop_uncurse_potion`, `shop_magical_ticket`, `shop_memorial_ticket`,
+  `shop_diamond`, `shop_ruby`, `shop_sapphire`, `shop_opal`, `shop_turquoise`, `shop_zircon`,
+  `shop_music_box`, `shop_sacrificial_doll`, `shop_white_bishop`. Every row not kept is a
+  location: 20 locations with all 15 items kept, up to 35 with none.
+- The locations are named `Rinaldo's Shop: Item 1`, `Item 2` and so on (location group `Shop`).
+  The Buy list shows 20 of them at a time, in that order; the next ones appear as you buy earlier
+  ones.
+- `shop_prices` sets what the locations cost:
+  - `custom`: a random price from 10 gold up to `shop_custom_price` each (2-10000, default 1000;
+    below 10, every location costs exactly that).
+  - `affordable`: a random price from 10 to 500 gold each.
+  - `normal` (the default): a random price from 500 to 2000 gold each.
+  - `unaffordable`: a random price from 1000 to 5000 gold each.
+
+  Every price is a multiple of 10 gold (2178 becomes 2180). The spoiler log lists every
+  location's price.
+- Gold isn't part of the logic: a shop location only needs the shop, which is open from the
+  start. You may have to farm gold before you can buy what you need.
+- Each row shows what it holds and for whom. A bought location stays sold out: the client tells
+  the game which ones are checked every time it connects, so they stay off the list after a
+  reload or a console reset too.
+- The shop locations add the same number of filler items (or traps, with `trap_chance`) to the
+  item pool.
 
 ## Area Keys
 
