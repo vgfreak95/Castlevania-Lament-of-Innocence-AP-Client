@@ -17,9 +17,10 @@ from CommonClient import (ClientCommandProcessor, CommonContext, get_base_parser
                           logger, server_loop)
 from NetUtils import ClientStatus, NetworkItem
 
-from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS
+from .data_loader import BASE_ID, GAME_NAME, ITEMS, LOCATIONS, TORCHES
 from .game_interface import (EV_LOCATION, GOAL_DEATH, GOAL_WALTER, QOL_WOLFS_FOOT, GameMismatch,
-                             GameStatus, LoIInterface, build_key_map, resolve_progressive)
+                             GameStatus, LoIInterface, TorchSpot, build_key_map,
+                             resolve_progressive)
 from .pine import DEFAULT_SLOT, Pine, PineError
 
 POLL_INTERVAL = 0.1           # seconds between game polls (the event ring holds 8 events)
@@ -28,6 +29,7 @@ GOAL_OPTION_WALTER, GOAL_OPTION_DEATH = 0, 1
 ALL_AREA_LOCKS = 0x1F         # the five hub areas (items.py AREA_KEYS), src/stagekeys.h
 BASIC_SKILLS_VANILLA = 0      # options.py BasicSkills.option_vanilla
 BASIC_SKILLS_MASK = 0x5000    # Quick Step | Perfect Guard (items.py BASIC_SKILLS_MASK, src/skills.h)
+TORCH_SANITY_OFF = 0          # options.py TorchSanity.option_off
 
 
 class LoICommandProcessor(ClientCommandProcessor):
@@ -76,7 +78,7 @@ class LoIContext(CommonContext):
         self.popups = True
         self.game_state = "not connected"
         self.slot_data: Dict = {}
-        self.key_to_location: Dict[int, int] = build_key_map(LOCATIONS)
+        self.key_to_location: Dict[int, int] = build_key_map(LOCATIONS + TORCHES)
         self.location_to_key: Dict[int, int] = {v: k for k, v in self.key_to_location.items()}
         self.ap_to_game_item: Dict[int, int] = {rec["ap_id"]: rec["game_id"] for rec in ITEMS}
         self.unknown_keys: Set[int] = set()
@@ -84,6 +86,8 @@ class LoIContext(CommonContext):
         self.pending_popups: List[str] = []
         self.last_deaths: Optional[int] = None   # game's death counter last seen; None = re-read
         self.pending_kills = 0                   # received DeathLinks not yet passed to the game
+        # ((slot torch count, checked torch ap_ids), torch table) last built
+        self.torch_spots_cache: Optional[Tuple[Tuple[int, frozenset], List[TorchSpot]]] = None
         unmapped = sum(1 for rec in LOCATIONS if rec.get("game_key") is None)
         if unmapped:
             logger.warning(f"{unmapped} locations have no game_key yet (run tools/loc_scan.py); "
@@ -104,6 +108,7 @@ class LoIContext(CommonContext):
         if cmd == "Connected":
             self.slot_data = args.get("slot_data") or {}
             self.goal_sent = False
+            self.torch_spots_cache = None
             asyncio.create_task(self.update_death_link(bool(self.slot_data.get("death_link"))))
         elif cmd == "PrintJSON" and self.popups:
             self._queue_sent_popup(args)
@@ -114,7 +119,29 @@ class LoIContext(CommonContext):
 
     async def disconnect(self, allow_autoreconnect: bool = False):
         self.slot_data = {}
+        self.torch_spots_cache = None
         await super().disconnect(allow_autoreconnect)
+
+    # ---- Torch Sanity ----
+    torch_ap_ids: Set[int] = {rec["ap_id"] for rec in TORCHES}
+
+    def torch_sanity(self) -> bool:
+        return self.slot_data.get("torch_sanity", TORCH_SANITY_OFF) != TORCH_SANITY_OFF
+
+    def torch_spots(self) -> List[TorchSpot]:
+        """The game's torch table: every torch location of the slot, checked or not (a red torch
+        drops nothing, so the client doesn't need to know what it holds)."""
+        if not self.torch_sanity() or self.slot is None:
+            return []
+        slot_torches = self.torch_ap_ids & self.server_locations
+        checked = frozenset(slot_torches & (self.checked_locations | self.locations_checked))
+        if self.torch_spots_cache and self.torch_spots_cache[0] == (len(slot_torches), checked):
+            return self.torch_spots_cache[1]
+        spots = [TorchSpot(rec["room_key"], rec["x_bits"], rec["z_bits"], rec["game_key"],
+                           rec["ap_id"] in checked)
+                 for rec in TORCHES if rec["ap_id"] in slot_torches]
+        self.torch_spots_cache = ((len(slot_torches), checked), spots)
+        return spots
 
     # ---- helpers ----
     def game_items(self) -> List[Tuple[int, str]]:
@@ -186,6 +213,14 @@ async def game_tick(ctx: LoIContext, game: LoIInterface) -> None:
         await asyncio.to_thread(game.set_skill_vanilla, vanilla)
         qol = QOL_WOLFS_FOOT if ctx.slot_data.get("wolfs_foot_qol") else 0
         await asyncio.to_thread(game.set_qol, qol)
+        torch_keys = await asyncio.to_thread(game.sync_torches, ctx.torch_spots())
+        # torches broken without an event we saw (while the client was away)
+        torch_locations = {ctx.key_to_location[k] for k in torch_keys if k in ctx.key_to_location}
+        torch_locations -= ctx.locations_checked
+        if torch_locations:
+            ctx.locations_checked |= torch_locations
+            if ctx.server:
+                await ctx.check_locations(torch_locations)
         await asyncio.to_thread(game.sync_items, ctx.game_items())
         status = await asyncio.to_thread(game.status)
         if not ctx.goal_sent and ctx.goal_reached(status.goal) and ctx.server:

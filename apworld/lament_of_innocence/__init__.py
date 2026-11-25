@@ -47,10 +47,10 @@ class LoIWorld(World):
     location_name_groups = LOCATION_GROUPS
 
     def generate_early(self) -> None:
-        for opt in (self.options.torch_sanity, self.options.enemy_drop_sanity):
-            if opt.value:
-                logger.warning(f"{self.player_name}: {opt.display_name} is not implemented yet; ignored.")
-                opt.value = 0
+        opt = self.options.enemy_drop_sanity
+        if opt.value:
+            logger.warning(f"{self.player_name}: {opt.display_name} is not implemented yet; ignored.")
+            opt.value = 0
         # Area Keys: the keys given at the start (the rest go in the pool)
         self.starting_area_keys = pick_starting_area_keys(self) if self.options.area_keys else []
 
@@ -70,7 +70,8 @@ class LoIWorld(World):
         return {
             "base_id": BASE_ID,
             **self.options.as_dict("goal", "death_link", "area_keys", "basic_skills",
-                                   "progressive_brooch", "progressive_plates", "wolfs_foot_qol"),
+                                   "progressive_brooch", "progressive_plates", "wolfs_foot_qol",
+                                   "torch_sanity"),
         }
 
 

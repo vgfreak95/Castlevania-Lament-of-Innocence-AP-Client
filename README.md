@@ -75,6 +75,8 @@ Extra commands in the client:
 
 - **Locations:** 112 unique floor pickups, from the Prelude to the Prison of Eternal Torture,
   plus the rewards of 9 bosses: the five area bosses, the three Elementals and the Forgotten One.
+  With **Torch Sanity** on, every breakable torch is a location too: an unchecked torch burns
+  red, and breaking it checks the location (it drops nothing).
 - **Items:** whips (except the starting Whip of Alchemy), the five keys, tablets, Dragon Crest,
   Unlock Jewel, Curtain Time Bell, all seven orbs, armour, accessories and relics (including
   shop items), HP/Heart/MP Max Ups and filler (potions, hearts, money, food).

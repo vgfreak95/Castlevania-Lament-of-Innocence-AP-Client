@@ -46,6 +46,17 @@ hooks = [
     { site = 0x00460714, original = 0x0C11908E, function = "knock_hook" },         # jal PlayerHitCheck in the player update (src/traps.c, Knockback Trap)
 ]
 
+# torch table at 0xC0000, check ring at 0xC7900, debug scan buffer at 0xC8000 (src/torches.h)
+[patch.torches]
+title = "Archipelago Torches"
+description = "Torch Sanity: a torch that is an unchecked AP location burns red; breaking it checks the location (reported by the Archipelago Pickups patch) and drops nothing. Every other torch, and every sub-weapon torch, stays vanilla. The AP client writes the torch table."
+base = 0x000B8000
+sources = ["src/torches.c"]
+hooks = [
+    { site = 0x00683ED0, original = 0x0C1A0DE2, function = "torch_flame_hook" },   # jal Torch_CreateFlame in Torch_Create
+    { site = 0x006A41D4, original = 0x0C112BAC, function = "torch_drop_stub" },    # jal ItemObj_Spawn in Candle_Update
+]
+
 [patch.minimap]
 title = "Archipelago Menu and Minimap"
 description = "Top-right minimap of the visited rooms on Leon's floor, shaped from the pause map's model, with markers on rooms that still have unchecked AP pickups. Tap L3 to show/hide it; hold L3 for the Archipelago Menu (Minimap Options). Rinaldo's shop sells the Savewarp Ticket (2000 gold, one per game, reusable in save rooms)."
@@ -74,4 +85,4 @@ hooks = [
 
 [pnach.ap]
 dir = "build"
-patches = ["pickup", "minimap"]
+patches = ["pickup", "minimap", "torches"]

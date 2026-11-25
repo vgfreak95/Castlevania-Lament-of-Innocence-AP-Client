@@ -6,6 +6,10 @@ patch (src/pickup.c, src/msgbox.h, src/ap.h), spoken over PINE.
 - Message queue @ 0xFD000: the client may post popups ("Sent X to Y").
 - Receive ring @ 0xFE000: the client writes the server's items; the game gives them in order and
   keeps how many it has given (`applied`) in the save.
+- Torch table @ 0xC0000 (src/torches.h, Torch Sanity): the client lists the slot's torch
+  locations (room key, position, game_key, checked flag); the "Archipelago Torches" patch makes
+  the unchecked ones burn red, and breaking one sets its checked flag and reports the location
+  through the event mailbox (it drops nothing).
 
 No Archipelago imports, so tools/test_ap_client.py can run it against an in-memory fake.
 Every address and layout here must match the C side.
@@ -33,7 +37,7 @@ STATUS = 0x000FCF00
 # area_locks (client), skill_vanilla (client), qol (client)
 STATUS_STRUCT = struct.Struct("<11I")
 STATUS_MAGIC = 0x54535041           # "APST"
-PROTOCOL_VERSION = 6
+PROTOCOL_VERSION = 7                # 7: torch table
 STATUS_CLIENT_TICKS = STATUS + 16
 STATUS_KILL_REQ = STATUS + 28
 STATUS_AREA_LOCKS = STATUS + 32     # bit i = area i (items.py AREA_KEYS) needs its key
@@ -79,6 +83,16 @@ RECV_HEADER = struct.Struct("<4I")   # magic, count, applied, reserved
 RECV_ENTRY = struct.Struct("<Ii24s")  # index, item, sender (cp932, NUL-terminated)
 SENDER_BYTES = 23
 
+# ---- torch table (torches.h) ----
+TORCH_TABLE = 0x000C0000
+TORCH_TABLE_MAGIC = 0x48435254       # "TRCH"
+TORCH_TABLE_MAX = 1536
+TORCH_HEADER = struct.Struct("<4I")  # magic, count, checked_seq, reserved
+TORCH_ENTRY = struct.Struct("<HHIIII")  # room_key, reserved (0), x_bits, z_bits, game_key, flags
+TORCH_FLAGS_OFFSET = 16              # of flags in an entry
+TF_CHECKED = 0x1
+TORCH_VERIFY_POLLS = 30              # re-read the whole table this often (save states, resets)
+
 # ---- game state ----
 CUR_STAGE = 0x00738E94               # u16 stage, u16 room
 BOSS_KEY_BASE = 0x8000               # boss reward game_key = BOSS_KEY_BASE + reward index
@@ -102,6 +116,23 @@ class GameEvent:
     item: int
     location: int
     name: str
+
+
+@dataclass(frozen=True)
+class TorchSpot:
+    """One torch location of the slot, as the game's torch table holds it."""
+    room_key: int
+    x_bits: int
+    z_bits: int
+    game_key: int
+    checked: bool = False
+
+    def entry(self) -> bytes:
+        return TORCH_ENTRY.pack(self.room_key, 0, self.x_bits, self.z_bits, self.game_key,
+                                TF_CHECKED if self.checked else 0)
+
+    def unchecked(self) -> "TorchSpot":
+        return TorchSpot(self.room_key, self.x_bits, self.z_bits, self.game_key)
 
 
 @dataclass
@@ -141,6 +172,13 @@ class LoIInterface:
         self.last_event: Optional[Tuple[int, int, int]] = None
         self.missed = 0
         self.ticks = 0
+        # torch table: the layout last written (spots without their checked flag), the checked
+        # flags as far as we know them, polls until the next full re-read and the game's
+        # checked_seq at the last one
+        self.torch_layout: Optional[Tuple[TorchSpot, ...]] = None
+        self.torch_checked: List[bool] = []
+        self.torch_verify = 0
+        self.torch_seq = 0
 
     # ---- connection check ----
     def check_game(self) -> None:
@@ -281,6 +319,72 @@ class LoIInterface:
         if magic != RECV_MAGIC:
             self.mem.write32(RECVQ, RECV_MAGIC)
         return applied
+
+    # ---- torches ----
+    def sync_torches(self, spots: Sequence[TorchSpot]) -> List[int]:
+        """Make the game's torch table hold `spots` (empty: no table, every torch vanilla).
+        Returns the game_keys of torches the game marked checked that `spots` doesn't have checked
+        yet: breaking a red torch also posts an EV_LOCATION, so this is only a backstop for events
+        the client missed (e.g. torches broken while it wasn't running).
+        Checked flags are only ever set, never cleared. The whole table is rewritten when the
+        layout changes or the game lost it (console reset), and re-read when the game bumps
+        checked_seq and every TORCH_VERIFY_POLLS calls (a save-state load)."""
+        magic, count, seq, _ = TORCH_HEADER.unpack(self.mem.read(TORCH_TABLE, TORCH_HEADER.size))
+        if not spots:
+            if magic == TORCH_TABLE_MAGIC:
+                self.mem.write32(TORCH_TABLE, 0)
+            self.torch_layout = None
+            return []
+        spots = spots[:TORCH_TABLE_MAX]
+        layout = tuple(s.unchecked() for s in spots)
+        if magic != TORCH_TABLE_MAGIC or count != len(spots) or layout != self.torch_layout:
+            self._write_torch_table(spots, layout)
+            return []
+        found: List[int] = []
+        self.torch_verify += 1
+        if self.torch_verify >= TORCH_VERIFY_POLLS or seq != self.torch_seq:
+            self.torch_verify = 0
+            self.torch_seq = seq
+            found = self._verify_torch_table(spots)
+        for i, s in enumerate(spots):
+            if s.checked and not self.torch_checked[i]:
+                self.mem.write32(self._torch_flags_addr(i), TF_CHECKED)
+                self.torch_checked[i] = True
+        return found
+
+    @staticmethod
+    def _torch_flags_addr(i: int) -> int:
+        return TORCH_TABLE + TORCH_HEADER.size + i * TORCH_ENTRY.size + TORCH_FLAGS_OFFSET
+
+    def _write_torch_table(self, spots: Sequence[TorchSpot], layout: Tuple[TorchSpot, ...]) -> None:
+        self.mem.write32(TORCH_TABLE, 0)          # the game ignores the table while we write it
+        self.mem.write(TORCH_TABLE + TORCH_HEADER.size, b"".join(s.entry() for s in spots))
+        self.mem.write(TORCH_TABLE + 4, struct.pack("<3I", len(spots), 0, 0))
+        self.mem.write32(TORCH_TABLE, TORCH_TABLE_MAGIC)   # last
+        self.torch_layout = layout
+        self.torch_checked = [s.checked for s in spots]
+        self.torch_verify = 0
+        self.torch_seq = 0
+
+    def _verify_torch_table(self, spots: Sequence[TorchSpot]) -> List[int]:
+        """Re-read every entry: fix any that differ (a save state with another table, or one
+        from before some checks) and learn the checked flags the game set. Returns the game_keys
+        the game checked that `spots` doesn't have checked."""
+        raw = self.mem.read(TORCH_TABLE + TORCH_HEADER.size, len(spots) * TORCH_ENTRY.size)
+        found: List[int] = []
+        for i, s in enumerate(spots):
+            off = i * TORCH_ENTRY.size
+            *fields, flags = TORCH_ENTRY.unpack_from(raw, off)
+            same = tuple(fields) == (s.room_key, 0, s.x_bits, s.z_bits, s.game_key)
+            game_checked = same and bool(flags & TF_CHECKED)   # another table's flag means nothing
+            want = s.checked or game_checked
+            if game_checked and not s.checked:
+                found.append(s.game_key)
+            if not same or bool(flags & TF_CHECKED) != want:
+                entry = TorchSpot(s.room_key, s.x_bits, s.z_bits, s.game_key, want).entry()
+                self.mem.write(TORCH_TABLE + TORCH_HEADER.size + off, entry)
+            self.torch_checked[i] = want
+        return found
 
     # ---- messages ----
     def post_message(self, text: str) -> bool:

@@ -10,7 +10,9 @@ from typing import Callable, Dict, Optional, Tuple
 
 from BaseClasses import CollectionState
 
-from .locations import AREA_BOSSES, boss_event_item
+from .locations import AREA_BOSSES, LOCATION_TABLE, boss_event_item
+
+BOSS_KEY_BASE = 0x8000   # boss reward game_key = BOSS_KEY_BASE + index (src/ap.h)
 
 Rule = Callable[[CollectionState], bool]
 
@@ -59,6 +61,43 @@ def _has_all(items: Tuple[str, ...], player: int) -> Optional[Rule]:
 
 def location_rule(name: str, player: int) -> Optional[Rule]:
     return _has_all(LOCATION_REQUIREMENTS.get(name, ()), player)
+
+
+def _room_requirements() -> Dict[int, Tuple[str, ...]]:
+    """room key -> every item the gated pickups of that room need (a pickup's game_key is
+    room_key * 64 + flag index; boss rewards have no room)."""
+    rooms: Dict[int, Tuple[str, ...]] = {}
+    for name, items in LOCATION_REQUIREMENTS.items():
+        rec = LOCATION_TABLE.get(name)
+        if not rec or rec.get("game_key") is None or rec["game_key"] >= BOSS_KEY_BASE:
+            continue
+        room = rec["game_key"] // 64
+        rooms[room] = tuple(sorted(set(rooms.get(room, ())) | set(items)))
+    return rooms
+
+
+ROOM_REQUIREMENTS: Dict[int, Tuple[str, ...]] = _room_requirements()
+
+# Rooms behind an in-area gate, (stage, room) -> items needed to get in: what the area's region
+# rule doesn't cover. Torch Sanity "full" applies them to the torches in those rooms. Add rooms
+# here as the gates are mapped (stage/room as the debug menu's Info HUD shows them).
+GATED_ROOMS: Dict[Tuple[int, int], Tuple[str, ...]] = {
+    # GFbT: the Wolf's Foot jump in room 49 leads to the torch room 52 and the torch hallway 53,
+    # then Saisei Incense (room 54, "GFbT: Saisei Incense" above)
+    (3, 52): ("Wolf's Foot",),
+    (3, 53): ("Wolf's Foot",),
+}
+
+
+def torch_rule(rec: dict, player: int) -> Optional[Rule]:
+    """Torch Sanity "full": a torch needs what its room's gate needs (GATED_ROOMS) plus what the
+    gated pickups of its room need.
+    VERIFY: only the rooms in GATED_ROOMS are known; a torch in any other room behind an in-area
+    gate (key door, Wolf's Foot jump, elemental whip, breakable wall, switch door) counts as open
+    once its area is reached."""
+    items = set(GATED_ROOMS.get((rec.get("stage"), rec.get("room")), ()))
+    items |= set(ROOM_REQUIREMENTS.get(rec["room_key"], ()))
+    return _has_all(tuple(sorted(items)), player)
 
 
 def boss_rule(name: str, player: int) -> Optional[Rule]:

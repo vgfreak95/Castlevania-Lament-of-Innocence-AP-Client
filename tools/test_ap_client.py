@@ -457,6 +457,137 @@ class DataTests(unittest.TestCase):
         self.assertEqual(gi.boss_game_key(0x44F590), 0x8000)
         self.assertEqual(gi.boss_game_key(0x44F5B8), 0x800A)
 
+    def test_torch_data(self):
+        """data/torches.json: unique ids, keys and torch identities; no weapon torches."""
+        import json
+        with open(os.path.join(PKG, "data", "torches.json"), encoding="utf-8") as f:
+            torches = json.load(f)
+        self.assertGreater(len(torches), 1000)
+        for field in ("ap_id", "game_key", "name"):
+            self.assertEqual(len({t[field] for t in torches}), len(torches), field)
+        self.assertEqual(len({(t["room_key"], t["x_bits"], t["z_bits"]) for t in torches}),
+                         len(torches))
+        for t in torches:
+            self.assertEqual(t["game_key"] - 0x10000, t["ap_id"] - 207350000)
+            self.assertFalse(0xAA <= t["vanilla_item"] <= 0xAF, t["name"])
+            self.assertLess(t["room_key"], 0x10000)
+
+
+def torch_spots(n, checked=()):
+    return [gi.TorchSpot(room_key=10 + i // 3, x_bits=0x44000000 + i, z_bits=0x45000000 + i,
+                         game_key=0x10000 + i, checked=i in checked)
+            for i in range(n)]
+
+
+class TorchTableModel:
+    """What src/torches.c sees of the table."""
+
+    def __init__(self, ram):
+        self.ram = ram
+
+    def header(self):
+        return gi.TORCH_HEADER.unpack_from(self.ram, gi.TORCH_TABLE)
+
+    def entries(self):
+        magic, count, _, _ = self.header()
+        if magic != gi.TORCH_TABLE_MAGIC:
+            return None
+        base = gi.TORCH_TABLE + gi.TORCH_HEADER.size
+        return [gi.TORCH_ENTRY.unpack_from(self.ram, base + i * gi.TORCH_ENTRY.size)
+                for i in range(count)]
+
+    def break_torch(self, i):
+        """The red torch breaks: the game sets TF_CHECKED and bumps checked_seq (torch_drop_hook)."""
+        addr = gi.TORCH_TABLE + gi.TORCH_HEADER.size + i * gi.TORCH_ENTRY.size + gi.TORCH_FLAGS_OFFSET
+        struct.pack_into("<I", self.ram, addr, gi.TF_CHECKED)
+        seq_addr = gi.TORCH_TABLE + 8
+        struct.pack_into("<I", self.ram, seq_addr, struct.unpack_from("<I", self.ram, seq_addr)[0] + 1)
+
+
+class TorchTests(unittest.TestCase):
+    def setUp(self):
+        self.game, _, self.iface, self.sock = make_session()
+        self.table = TorchTableModel(self.game.ram)
+
+    def test_layout_matches_c(self):
+        self.assertEqual(gi.TORCH_ENTRY.size, 20)          # torches.h TorchEntry
+        self.assertEqual(gi.TORCH_TABLE + gi.TORCH_HEADER.size + gi.TORCH_TABLE_MAX * 20, 0xC7810)
+        # torches.h TorchChecks (16-byte header + 8 x 20) sits between the table and TORCH_SCAN
+        self.assertTrue(0xC7810 <= 0xC7900 and 0xC7900 + 16 + 8 * 20 <= 0xC8000)
+
+    def test_writes_table(self):
+        spots = torch_spots(5, checked={2})
+        self.assertEqual(self.iface.sync_torches(spots), [])
+        rows = self.table.entries()
+        self.assertEqual(len(rows), 5)
+        self.assertEqual(rows[0], (10, 0, 0x44000000, 0x45000000, 0x10000, 0))
+        self.assertEqual(rows[2][5], gi.TF_CHECKED)
+
+    def test_no_spots_clears_table(self):
+        self.iface.sync_torches(torch_spots(3))
+        self.iface.sync_torches([])
+        self.assertIsNone(self.table.entries())
+
+    def test_new_check_sets_flag_without_rewrite(self):
+        self.iface.sync_torches(torch_spots(4))
+        before = self.sock.requests
+        self.iface.sync_torches(torch_spots(4, checked={1}))
+        self.assertEqual(self.table.entries()[1][5], gi.TF_CHECKED)
+        self.assertLessEqual(self.sock.requests - before, 2)   # header read + one flag write
+
+    def test_broken_torch_is_reported_once(self):
+        """A torch the game checked is returned on the next sync (checked_seq moved), once."""
+        self.iface.sync_torches(torch_spots(4))
+        self.table.break_torch(3)
+        self.assertEqual(self.iface.sync_torches(torch_spots(4)), [0x10003])
+        self.assertEqual(self.iface.sync_torches(torch_spots(4)), [])
+        for _ in range(gi.TORCH_VERIFY_POLLS + 1):        # a full re-read still sees the flag:
+            found = self.iface.sync_torches(torch_spots(4))
+            self.assertIn(found, ([], [0x10003]))         # reported until the server knows
+        self.assertEqual(self.table.entries()[3][5], gi.TF_CHECKED)   # not undone
+        self.table.break_torch(0)
+        self.assertEqual(self.iface.sync_torches(torch_spots(4, checked={3})), [0x10000])
+
+    def test_torch_known_checked_not_reported(self):
+        self.iface.sync_torches(torch_spots(4, checked={1}))
+        self.table.break_torch(1)                          # e.g. broken again after a reload
+        self.assertEqual(self.iface.sync_torches(torch_spots(4, checked={1})), [])
+
+    def test_other_tables_flag_is_not_a_check(self):
+        """A save state with another slot's table: its flags don't count, the table is fixed."""
+        self.iface.sync_torches(torch_spots(4))
+        other = gi.TorchSpot(99, 1, 2, 0x10002, checked=True).entry()
+        base = gi.TORCH_TABLE + gi.TORCH_HEADER.size
+        self.game.ram[base + 2 * 20:base + 3 * 20] = other
+        struct.pack_into("<I", self.game.ram, gi.TORCH_TABLE + 8, 5)   # its checked_seq
+        self.assertEqual(self.iface.sync_torches(torch_spots(4)), [])
+        self.assertEqual(self.table.entries()[2], (10, 0, 0x44000002, 0x45000002, 0x10002, 0))
+
+    def test_console_reset_rewrites(self):
+        self.iface.sync_torches(torch_spots(4, checked={0}))
+        self.game.ram[gi.TORCH_TABLE:gi.TORCH_TABLE + 0x200] = bytes(0x200)
+        self.iface.sync_torches(torch_spots(4, checked={0}))
+        rows = self.table.entries()
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(rows[0][5], gi.TF_CHECKED)
+
+    def test_save_state_with_older_table_is_fixed(self):
+        """A save state from before a check (same layout, flag clear) gets the flag back."""
+        self.iface.sync_torches(torch_spots(4))
+        snap = self.game.snapshot()
+        self.iface.sync_torches(torch_spots(4, checked={2}))
+        self.game.restore(snap)                  # the table loses torch 2's flag
+        for _ in range(gi.TORCH_VERIFY_POLLS):
+            self.iface.sync_torches(torch_spots(4, checked={2}))
+        self.assertEqual(self.table.entries()[2][5], gi.TF_CHECKED)
+
+    def test_layout_change_rewrites(self):
+        self.iface.sync_torches(torch_spots(4))
+        spots = torch_spots(4)
+        spots[1] = gi.TorchSpot(spots[1].room_key, spots[1].x_bits, spots[1].z_bits, 0x10055)
+        self.iface.sync_torches(spots)
+        self.assertEqual(self.table.entries()[1][4], 0x10055)
+
 
 if __name__ == "__main__":
     unittest.main()

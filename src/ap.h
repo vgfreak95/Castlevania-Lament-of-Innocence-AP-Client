@@ -34,7 +34,7 @@ typedef struct {
 
 #define AP_STATUS ((volatile ApStatus *)0x000FCF00)
 #define AP_STATUS_MAGIC     0x54535041   /* "APST" */
-#define AP_PROTOCOL_VERSION 6
+#define AP_PROTOCOL_VERSION 7   /* 7: torch table (torches.h) */
 #define AP_SCAN_ACTIVE      0x4E414353   /* "SCAN" */
 
 #define GOAL_WALTER 0x1     /* Walter beaten: went from his room straight into Death's */
@@ -50,5 +50,8 @@ typedef struct {
  * g_BossRewardTable @ 0x7AF590 (ISO offset 0x44F590, the randomizer's boss locations). Their AP
  * game_key is BOSS_KEY_BASE + index; placed items use room_key * 64 + flag (< 416 * 64). */
 #define BOSS_KEY_BASE 0x8000
+
+/* Other game_keys: torches TORCH_KEY_BASE 0x10000 + n (torches.h). Fixed table in the cave:
+ * torch table 0xC0000 (torches.h). */
 
 #endif

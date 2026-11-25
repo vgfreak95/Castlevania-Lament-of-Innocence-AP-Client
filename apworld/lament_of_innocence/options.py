@@ -130,10 +130,19 @@ class PoisonTrapWeight(Range):
     default = 1
 
 
-class TorchSanity(Toggle):
-    """NOT IMPLEMENTED YET: add sub-weapon torches and candles as locations. Ignored for now."""
-    display_name = "Torch Sanity (not implemented)"
-    visibility = Visibility.none
+class TorchSanity(Choice):
+    """Every breakable torch (1324 of them) becomes a location. A torch that is still unchecked
+    burns with a red flame; breaking it checks the location and drops nothing. Once it's checked
+    it burns normally and drops hearts again. Sub-weapon torches keep their sub-weapon.
+    off: torches are not locations.
+    filler_only: torches are locations, but only ever hold filler items and traps.
+    full: torches can hold anything, progression included. Torches are only gated by their
+    area's access and by the known locks of the room they're in."""
+    display_name = "Torch Sanity"
+    option_off = 0
+    option_filler_only = 1
+    option_full = 2
+    default = 0
 
 
 class EnemyDropSanity(Toggle):

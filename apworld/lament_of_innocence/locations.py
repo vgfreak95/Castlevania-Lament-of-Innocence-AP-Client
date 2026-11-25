@@ -2,15 +2,17 @@ from typing import Dict, Set
 
 from BaseClasses import Location
 
-from .data_loader import GAME_NAME, LOCATIONS
+from .data_loader import GAME_NAME, LOCATIONS, TORCHES
 
-LOCATION_TABLE: Dict[str, dict] = {rec["name"]: rec for rec in LOCATIONS}
-LOCATION_NAME_TO_ID: Dict[str, int] = {rec["name"]: rec["ap_id"] for rec in LOCATIONS}
+# every location the world can have; the torches only exist in a game with Torch Sanity on
+LOCATION_TABLE: Dict[str, dict] = {rec["name"]: rec for rec in LOCATIONS + TORCHES}
+LOCATION_NAME_TO_ID: Dict[str, int] = {rec["name"]: rec["ap_id"] for rec in LOCATIONS + TORCHES}
 
 LOCATION_GROUPS: Dict[str, Set[str]] = {}
-for _rec in LOCATIONS:
+for _rec in LOCATIONS + TORCHES:
     LOCATION_GROUPS.setdefault(_rec["region"], set()).add(_rec["name"])
 LOCATION_GROUPS["Bosses"] = {r["name"] for r in LOCATIONS if r["kind"] == "boss"}
+LOCATION_GROUPS["Torches"] = {r["name"] for r in TORCHES}
 
 # Boss-defeat events: (event location, region, event item). The event has the same rule as the
 # boss's reward location (rules.py). The five area bosses open the Pagoda seal.

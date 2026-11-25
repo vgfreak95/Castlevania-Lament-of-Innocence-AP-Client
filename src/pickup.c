@@ -2,6 +2,8 @@
  * - Placed floor items with a collected flag are AP *locations*: picking one up gives nothing,
  *   reports "location N checked" and shows our own message box instead of the "Obtained" window.
  *   Location ID = GetRoomKey(stage, room) * 64 + collected-flag index (0-63 per room).
+ * - Torch Sanity (torches.c): breaking a red torch checks its location (TORCH_CHECKS, reported
+ *   by torch_checks_tick below); it drops nothing.
  * - Everything else (candle/enemy drops, swapped sub-weapon) stays vanilla and is just logged.
  * - Items sent by the AP server arrive in a ring at 0xFE000 (written by the client) and are given
  *   one per frame with a "Received X from Y" message; the count given is kept in the save.
@@ -24,6 +26,7 @@
 #include "qol.h"
 #include "shop.h"
 #include "traps.h"
+#include "torches.h"
 
 #define MAILBOX_MAGIC 0x50554B50 /* "PKUP" */
 #define MAILBOX_SLOTS 8          /* power of two: slot = seq % MAILBOX_SLOTS */
@@ -270,16 +273,11 @@ static int client_active(void)
     return client_seen_ticks != 0 && client_idle_frames < CLIENT_TIMEOUT;
 }
 
-/* takes `obj` as an AP location: nothing is given, the client is told */
-static void take_location(u8 *obj, int location)
+/* tells the client location `location` (vanilla item `vanilla`) was checked; our own message
+ * when no client is watching */
+static void report_location(int vanilla, int location)
 {
-    int vanilla = *(int *)(obj + ITEMOBJ_ID);
     char text[MSGQ_TEXT];
-
-    /* run the normal pickup with an item that gives nothing: keeps the sound and effect */
-    *(int *)(obj + ITEMOBJ_ID) = ITEM_ID_NO_EFFECT;
-    Item_OnPickup(obj);
-    *(int *)(obj + ITEMOBJ_ID) = vanilla;
 
     post_event(EV_LOCATION, vanilla, location);
     if (!client_active()) {
@@ -287,6 +285,18 @@ static void take_location(u8 *obj, int location)
                     location, Item_GetNameText(vanilla));
         msg_post(text);
     }
+}
+
+/* takes `obj` as an AP location: nothing is given, the client is told */
+static void take_location(u8 *obj, int location)
+{
+    int vanilla = *(int *)(obj + ITEMOBJ_ID);
+
+    /* run the normal pickup with an item that gives nothing: keeps the sound and effect */
+    *(int *)(obj + ITEMOBJ_ID) = ITEM_ID_NO_EFFECT;
+    Item_OnPickup(obj);
+    *(int *)(obj + ITEMOBJ_ID) = vanilla;
+    report_location(vanilla, location);
 }
 
 static int location_pickup(u8 *obj, u8 *actor)
@@ -369,6 +379,21 @@ static u8 fake_obj[0x240] __attribute__((aligned(16)));   /* full object size */
 #define FULL_GOLD_MAX       5000
 #define FULL_GOLD_DEFAULT   50
 
+/* runs Item_OnPickup for item `id` on fake_obj, at `pos` (float[3]) or the origin */
+static int fake_pickup(int id, const float *pos)
+{
+    int i;
+
+    for (i = 0; i < (int)sizeof(fake_obj); i++)
+        fake_obj[i] = 0;
+    if (pos)
+        for (i = 0; i < 3; i++)
+            ((float *)(fake_obj + ITEMOBJ_POS))[i] = pos[i];
+    *(int *)(fake_obj + ITEMOBJ_ID) = id;
+    *(int *)(fake_obj + ITEMOBJ_PICKUP_CB) = PICKUP_CB_NONE;
+    return Item_OnPickup(fake_obj);
+}
+
 /* gold given instead of an item that doesn't fit in the inventory */
 static int full_inventory_gold(int id)
 {
@@ -384,7 +409,7 @@ static int full_inventory_gold(int id)
  * was full: Item_OnPickup leaves such an item on the floor, and there is no floor here). */
 static int give_item(int id)
 {
-    int i, gold;
+    int gold;
 
     if (id >= 0xAA && id <= 0xAF) {    /* sub-weapon: equip it (no old one dropped on the floor) */
         SetSubWeapon(id, GetActiveOrb());
@@ -398,15 +423,35 @@ static int give_item(int id)
         trap_give(id);
         return 0;
     }
-    for (i = 0; i < (int)sizeof(fake_obj); i++)
-        fake_obj[i] = 0;
-    *(int *)(fake_obj + ITEMOBJ_ID) = id;
-    *(int *)(fake_obj + ITEMOBJ_PICKUP_CB) = PICKUP_CB_NONE;
-    if (Item_OnPickup(fake_obj))
+    if (fake_pickup(id, 0))
         return 0;
     gold = full_inventory_gold(id);
     AddGold(gold);
     return gold;
+}
+
+/* ---- Torch Sanity ----
+ * A red torch that breaks queues its check in TORCH_CHECKS (torches.c, its own patch, can't call
+ * us); reported here like a pickup location, with the pickup sound where the drop would have been. */
+static void torch_checks_tick(void)
+{
+    volatile TorchChecks *c = TORCH_CHECKS;
+    volatile TorchCheck *k;
+    float pos[3];
+    int n;
+
+    if (c->magic != TORCH_CHECKS_MAGIC)
+        return;
+    if (c->head - c->tail > TORCH_CHECKS_MAX)   /* torches.c resets a ring in that state */
+        return;
+    while (c->tail != c->head) {
+        k = &c->check[c->tail % TORCH_CHECKS_MAX];
+        for (n = 0; n < 3; n++)
+            pos[n] = k->pos[n];
+        fake_pickup(ITEM_ID_NO_EFFECT, pos);
+        report_location(k->item, k->game_key);
+        c->tail = c->tail + 1;
+    }
 }
 
 static void recv_tick(void)
@@ -578,6 +623,7 @@ void frame_end_hook(void)
     qol_frame();
     shop_frame();
     stagekeys_frame();       /* before recv_tick: received area keys need their item records */
+    torch_checks_tick();
     recv_tick();
     msgbox_tick();
 }

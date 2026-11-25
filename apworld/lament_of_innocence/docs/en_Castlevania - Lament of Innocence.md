@@ -187,4 +187,4 @@ Memorial Ticket that warps you between save rooms.
 
 ## Not implemented yet
 
-Torch sanity and enemy-drop sanity are declared as options but do nothing yet.
+Enemy-drop sanity is declared as an option but does nothing yet.
